@@ -24,6 +24,22 @@ PROMPTS = {
     "gaffer": "Frame times and delivery are slipping on the farm right now. "
               "Establish the cause from the telemetry and the logs, name the "
               "resource or node responsible, and say what you ruled out.",
+    "producer": "The farm is degraded. Read the throughput and exposure from "
+                "Prometheus and price what this does to the 30 September "
+                "delivery date.",
+    "first_ad": (
+        "Record this investigation in Grafana and write the production note. "
+        "CAUSE: licence starvation, both renderer pools at 0 of 12 seats free, "
+        "34 renders queued and waiting. "
+        "EVIDENCE: Loki line '[arnold] WARNING | licence checkout failed for "
+        "arnold_render, 0 of 12 seats free, 35 renders queued'. Texture cache "
+        "healthy at 0.9179 and node memory flat, so cache collapse and OOM were "
+        "ruled out. "
+        "IMPACT: 34 of 1200 shots projected past 30 September, delivery slips "
+        "17 hours. "
+        "COST: $88,514 total exposure, of which $72,337 is wasted render at "
+        "$4.10 per node-hour."
+    ),
 }
 
 
@@ -34,6 +50,12 @@ def build(name: str):
     if name == "gaffer":
         from agent.crew.gaffer import build_gaffer
         return build_gaffer()
+    if name == "producer":
+        from agent.crew.producer import build_producer
+        return build_producer()
+    if name == "first_ad":
+        from agent.crew.first_ad import build_first_ad
+        return build_first_ad()
     raise SystemExit(f"unknown agent {name}")
 
 
