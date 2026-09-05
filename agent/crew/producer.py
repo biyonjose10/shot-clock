@@ -95,7 +95,7 @@ Under 200 words.
 def build_producer() -> LlmAgent:
     return LlmAgent(
         name="producer",
-        model=crew_llm(),
+        model=crew_llm("producer"),
         description=(
             "Converts a render farm fault into delivery-date slip and dollar "
             "exposure, using a deterministic costing tool."

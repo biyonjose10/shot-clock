@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from google.adk.agents import LlmAgent
 
-from agent.models import CREW_MODEL
+from agent.models import crew_llm
 from agent.mcp import DATASOURCE_BRIEFING, GAFFER_TOOLS, toolset
 
 INSTRUCTION = f"""
@@ -74,7 +74,7 @@ Under 250 words.
 def build_gaffer() -> LlmAgent:
     return LlmAgent(
         name="gaffer",
-        model=CREW_MODEL,
+        model=crew_llm("gaffer"),
         description=(
             "Root-causes a render farm fault by correlating metrics with logs "
             "and traces, and names the node or resource responsible."

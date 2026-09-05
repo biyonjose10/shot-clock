@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from google.adk.agents import LlmAgent
 
-from agent.models import CREW_MODEL
+from agent.models import crew_llm
 from agent.mcp import DATASOURCE_BRIEFING, SCOUT_TOOLS, toolset
 
 INSTRUCTION = f"""
@@ -67,7 +67,7 @@ def build_scout() -> LlmAgent:
     """Scout, wired to its slice of the Grafana MCP tools."""
     return LlmAgent(
         name="scout",
-        model=CREW_MODEL,
+        model=crew_llm("scout"),
         description=(
             "Watches render farm telemetry and identifies which shots are at "
             "risk of missing the delivery date, and what is causing it."

@@ -1,61 +1,153 @@
-"""Which Gemini models the project uses, in one place.
+"""Which Gemini models the project uses, and how the free quota is spread.
 
 Pinned, not aliased. `gemini-flash-latest` would quietly change underneath us
 mid-build, and the demo has to behave the same on Tuesday as it did on Sunday.
 
-A caution learned the hard way: `client.models.list()` advertises models the
-key cannot actually call. A newly created project is treated as a "new user"
-and is refused older models with a 404 that only appears at call time:
+Two things about the free tier that are only discoverable by hitting them:
 
-    This model models/gemini-2.5-flash is no longer available to new users.
-    Please update your code to use models/gemini-3.6-flash
+1. `client.models.list()` advertises models the key cannot call. A newly
+   created project counts as a "new user" and is refused older models with a
+   404 raised only at call time:
 
-So the availability check that matters is a real request, not a listing.
+       This model models/gemini-2.5-flash is no longer available to new users.
+       Please update your code to use models/gemini-3.6-flash
 
-Free-tier quotas are per model AND per day, and on the newest models they are
-very small: gemini-3.6-flash allows 20 requests per day, which is roughly one
-crew investigation. Retrying cannot recover a daily cap. Picking a slightly
-older flash model buys a workable quota, and because the quota is per model,
-moving to another one is a real reset rather than a dodge.
+   The availability check that matters is a real request, not a listing.
+
+2. The free quota is `GenerateRequestsPerDayPerProjectPerModel` and it is
+   **20 requests per day, per model**. One crew investigation is 5-15 requests,
+   so a single model is roughly one run a day, and retrying cannot recover a
+   daily cap. Because the quota is per model, giving each crew member its own
+   model multiplies the usable budget by the size of the pool. That is quota
+   Google granted for this project, not quota being circumvented -- which is
+   why the rotation is across models rather than across new projects.
 """
 from __future__ import annotations
 
+import json
 import os
+from datetime import date
+from pathlib import Path
 
-#: Tool-calling crew. Flash, not pro: this is many short tool-selection turns,
-#: which flash handles well, and pro would multiply the cost of every run.
-CREW_MODEL = os.environ.get("SHOT_CLOCK_CREW_MODEL", "gemini-3.5-flash")
+ROOT = Path(__file__).resolve().parents[1]
+LEDGER = ROOT / "journals" / ".model_usage.json"
 
-#: Single-image classification with a constrained output schema.
-VISION_MODEL = os.environ.get("SHOT_CLOCK_VISION_MODEL", "gemini-3.5-flash")
+#: Models verified callable on this project by an actual request. Full flash
+#: models first; tool selection degrades on the lite tier.
+MODEL_POOL: list[str] = [
+    "gemini-3.5-flash",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.8-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+]
 
-#: Narration for the demo video.
+#: Free-tier daily allowance per model, used to plan rotation.
+DAILY_BUDGET = 20
+
+#: Each crew member gets its own model so their quotas do not collide: one run
+#: draws on four separate budgets instead of exhausting a single one.
+ROLE_MODELS: dict[str, str] = {
+    "scout": "gemini-3.5-flash",
+    "gaffer": "gemini-3.6-flash",
+    "producer": "gemini-3.7-flash",
+    "first_ad": "gemini-3.8-flash",
+    "vision": "gemini-3-flash-preview",
+}
+
+CREW_MODEL = os.environ.get("SHOT_CLOCK_CREW_MODEL", MODEL_POOL[0])
+VISION_MODEL = os.environ.get("SHOT_CLOCK_VISION_MODEL", ROLE_MODELS["vision"])
 TTS_MODEL = os.environ.get("SHOT_CLOCK_TTS_MODEL", "gemini-2.5-flash-preview-tts")
 
 
-def crew_llm():
-    """The crew model, configured to survive free-tier rate limits.
+# --- paid key guard --------------------------------------------------------
+# Standing instruction: the paid key is never spent without being asked first.
+# Encoding it here means it cannot happen through a forgotten env var.
 
-    The free tier allows 5 requests per minute per model, and a tool-calling
-    agent burns through that in one investigation: each tool round trip is
-    another request. Without backoff the run dies partway with a 429 and takes
-    the journal with it.
+class PaidKeyBlocked(RuntimeError):
+    """Refused to spend the paid key without an explicit opt-in."""
 
-    Retrying is the right answer rather than downgrading the model, because
-    waiting is free and the run is not latency-sensitive. A run that takes
-    three minutes instead of one still costs nothing.
+
+def assert_not_paid_key() -> None:
+    if os.environ.get("SHOT_CLOCK_ALLOW_PAID") == "1":
+        return
+    key = (os.environ.get("GOOGLE_API_KEY") or "").strip()
+    paid = (os.environ.get("GOOGLE_API_KEY_PAID") or "").strip()
+    if paid and key and key == paid:
+        raise PaidKeyBlocked(
+            "GOOGLE_API_KEY is the PAID key. Refusing to spend it without "
+            "permission. If this is intended, re-run with "
+            "SHOT_CLOCK_ALLOW_PAID=1."
+        )
+
+
+# --- usage ledger ----------------------------------------------------------
+def _load() -> dict:
+    if not LEDGER.exists():
+        return {}
+    try:
+        data = json.loads(LEDGER.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 - a corrupt ledger is not worth failing on
+        return {}
+    return data if data.get("date") == date.today().isoformat() else {}
+
+
+def record_use(model: str, calls: int = 1) -> None:
+    data = _load() or {"date": date.today().isoformat(), "models": {}}
+    data.setdefault("models", {})
+    data["models"][model] = data["models"].get(model, 0) + calls
+    LEDGER.parent.mkdir(parents=True, exist_ok=True)
+    LEDGER.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def usage_today() -> dict[str, int]:
+    return dict(_load().get("models", {}))
+
+
+def budget_report() -> str:
+    used = usage_today()
+    lines = ["  model                        agent-runs-started  free calls left"]
+    for m in MODEL_POOL:
+        u = used.get(m, 0)
+        lines.append(f"  {m:26s} {u:12d}  {max(DAILY_BUDGET - u, 0):14d}")
+    return "\n".join(lines)
+
+
+def model_for(role: str) -> str:
+    """The model for this role, skipping any believed exhausted today."""
+    preferred = os.environ.get("SHOT_CLOCK_CREW_MODEL") or ROLE_MODELS.get(role)
+    used = usage_today()
+    if preferred and used.get(preferred, 0) < DAILY_BUDGET:
+        return preferred
+    for candidate in MODEL_POOL:
+        if used.get(candidate, 0) < DAILY_BUDGET:
+            return candidate
+    # Everything is spent. Return the preferred one so the failure is a clear
+    # 429 naming the model, rather than a confusing silent fallback.
+    return preferred or MODEL_POOL[0]
+
+
+def crew_llm(role: str = "scout"):
+    """The model for `role`, configured to survive free-tier rate limits.
+
+    Backoff handles the per-minute quota; it cannot rescue the daily cap, which
+    is what the per-role rotation is for.
     """
     from google.adk.models import Gemini
     from google.genai import types
 
+    assert_not_paid_key()
+    model = model_for(role)
+    record_use(model)
     return Gemini(
-        model=CREW_MODEL,
+        model=model,
         retry_options=types.HttpRetryOptions(
-            attempts=8,
+            attempts=6,
             initial_delay=8.0,
             max_delay=60.0,
             exp_base=1.5,
-            # 429 is the free-tier quota; 503 is transient model overload.
+            # 429 covers the per-minute quota; 503 is transient overload.
             http_status_codes=[429, 503],
         ),
     )

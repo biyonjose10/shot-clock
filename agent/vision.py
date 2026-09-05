@@ -27,6 +27,7 @@ from google import genai
 from google.genai import types
 
 from agent.models import VISION_MODEL as DEFAULT_MODEL
+from agent.models import assert_not_paid_key, record_use
 
 TECH_CHECK_PROMPT = """
 You are a VFX dailies technical check. You are looking at one rendered frame
@@ -136,6 +137,8 @@ def tech_check(frame_path: str | Path, model: str = DEFAULT_MODEL) -> Verdict:
     if not path.exists():
         raise FileNotFoundError(path)
 
+    assert_not_paid_key()
+    record_use(model)
     response = _client().models.generate_content(
         model=model,
         contents=[

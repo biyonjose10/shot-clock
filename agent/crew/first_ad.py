@@ -73,7 +73,7 @@ be sent -- direct, no jargon, no hedging:
 def build_first_ad() -> LlmAgent:
     return LlmAgent(
         name="first_ad",
-        model=crew_llm(),
+        model=crew_llm("first_ad"),
         description=(
             "Records the investigation in Grafana -- incident, activity, "
             "annotation and deeplink -- and writes the production note."
