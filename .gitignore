@@ -15,3 +15,4 @@ journals/live-*.jsonl
 # Generated frames and audio
 web/static/frames/*.png
 demo/*.wav
+.tools/
