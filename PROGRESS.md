@@ -2,46 +2,49 @@
 
 Deadline: **2:00 PM PT, Tue 9 Sept 2026** (2:30 AM IST Sept 10). Submit by 6 PM IST Sept 9.
 
-## Gate 0 — Fri 5 Sept: telemetry visible in Grafana
+## GATE 0 — PASSED (Fri 5 Sept)
 
-### Done
-- Repo created, MIT licence, `.gitignore`, `.env.example`.
-- `commit-msg` hook rejects assistant-attribution trailers (verified both directions).
-- **Python 3.14.3 cleared for ADK.** `google-adk==2.8.0` imports clean.
-  Required pinning `mcp==1.29.1` — mcp 2.x renamed `McpError` -> `MCPError`,
-  which ADK imports by the old name; the failure is a *silent* ImportError that
-  makes `McpToolset` simply not exist. Recorded in `requirements.txt`.
-- `bin/mcp-grafana.exe` v1.3.0 downloaded (prebuilt; no Go or Docker needed).
-- **72 tools enumerated from the running server** -> `docs/mcp-tools.txt`.
-  All headline write tools confirmed present.
+All three signals confirmed landing in Grafana Cloud stack `robustspring2217`:
 
-- **Simulator complete and runnable with no credentials** (`--dry-run`):
-  1200 shots, 200 nodes, licence pool, texture cache, four injectable faults.
-  Verified the four fault signatures are distinguishable from telemetry alone,
-  and that `corrupt-frame` is invisible in every metric -- which is the whole
-  argument for the vision check.
-- `scripts/preflight.py` proves the ingest path end to end, including that the
-  service account can WRITE, not just read.
+| Signal | Evidence |
+|---|---|
+| Metrics | 201 node series, 48 per shot metric, 1 each farm-wide (~350 active, 10k budget) |
+| Logs | LogQL returns Arnold/Karma stderr with shot_id, node, artist |
+| Traces | Tempo returns `render_frame` traces, per-stage sub-spans, 330s under fault |
 
-### Blocked on manual setup
-- Grafana Cloud account, OTLP credentials, Admin service-account token.
-- Google Cloud project + billing (lead time), gcloud CLI install.
+- Repo + MIT licence, 10 clean commits, `commit-msg` hook blocks assistant trailers.
+- `google-adk==2.8.0` works on Python 3.14.3 — required pinning `mcp==1.29.1`
+  (mcp 2.x renamed `McpError`->`MCPError`; ADK's import fails *silently* and
+  `McpToolset` simply ceases to exist).
+- 72 MCP tools enumerated from the running binary -> `docs/mcp-tools.txt`.
+  All 26 allowlisted names validated against it.
+- Simulator: 1200 shots, 200 nodes, licence pool, texture cache, 4 faults,
+  runs fully offline with `--dry-run`.
+- Journal record/replay spine built and self-tested.
 
-### Next
-- `sim/telemetry.py` once OTLP credentials land.
-- First commit, push to public GitHub repo.
+### Traps found and neutralised
+1. **`mcp<2` pin** — see above. Silent failure, would have cost a day.
+2. **Three Loki datasources.** The alphabetically-first is
+   `alert-state-history`, permanently empty. An agent landing there reports
+   "no logs" and looks broken. Uids pinned in `agent/mcp.py`.
+3. **Defect frames were a different image** from the clean frame — the defect
+   was mixed into the composition seed. Clean/corrupt now share a base plate.
+4. **Fireflies read as a starfield** at the original density; a vision model
+   would call that a creative choice, not a defect. Reduced to sparse isolated
+   hot pixels that fall on buildings and road where stars cannot.
 
-## Findings that changed the plan
-- `find_slow_requests` searches **Tempo** datasources via Sift, so traces are
-  partially reachable through the required MCP server after all.
-- `grafana_api_request` ("similar to `gh api`") is a general authenticated
-  escape hatch to any Grafana API — a fallback for anything without a tool.
-- `get_panel_image` returns a panel PNG as base64, which removes the Grafana
-  Cloud iframe/anonymous-access problem entirely for the war room UI.
+## Blocked on manual setup
+- **Google Cloud project + billing + Gemini API key** — now the critical path.
+  Gate 1 cannot start without a key.
+- **Push to public GitHub** — awaiting go-ahead.
+
+## Next (Gate 1, Sat 6 Sept)
+- Scout answering "which shots are at risk and why" over real MCP calls.
+- Gemini vision tech-check on a corrupt frame (pulled forward from Gate 2).
+- War room UI shell (in progress).
 
 ## Known tuning, not blocking
-- Baseline node memory already peaks near 100% on a few nodes, so Scout must
-  detect OOM by rate of climb, not by highest absolute value. Revisit when the
-  real PromQL queries exist at Gate 1.
-- Too many shots read as at-risk once a farm-wide fault lands (900+ of 1200).
-  Producer's dollar figure is more legible with a handful. Tune at Gate 2.
+- Baseline node memory already peaks near 100%, so Scout must detect OOM by
+  rate of climb, not absolute value.
+- 900+ of 1200 shots read as at-risk once a farm-wide fault lands. Producer's
+  dollar figure is more legible with a handful. Tune at Gate 2.
