@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from google.adk.agents import LlmAgent
 
+from agent.models import CREW_MODEL
 from agent.mcp import DATASOURCE_BRIEFING, SCOUT_TOOLS, toolset
-
-MODEL = "gemini-2.5-flash"
 
 INSTRUCTION = f"""
 You are Scout, the farm watch on a VFX render farm delivering a feature film.
@@ -68,7 +67,7 @@ def build_scout() -> LlmAgent:
     """Scout, wired to its slice of the Grafana MCP tools."""
     return LlmAgent(
         name="scout",
-        model=MODEL,
+        model=CREW_MODEL,
         description=(
             "Watches render farm telemetry and identifies which shots are at "
             "risk of missing the delivery date, and what is causing it."

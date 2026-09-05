@@ -26,9 +26,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-#: Flash is the default on purpose: this is a single-image classification with a
-#: constrained output schema, which flash does well, at a fraction of pro's cost.
-DEFAULT_MODEL = os.environ.get("SHOT_CLOCK_VISION_MODEL", "gemini-2.5-flash")
+from agent.models import VISION_MODEL as DEFAULT_MODEL
 
 TECH_CHECK_PROMPT = """
 You are a VFX dailies technical check. You are looking at one rendered frame
