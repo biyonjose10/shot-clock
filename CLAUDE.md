@@ -43,9 +43,12 @@ scripts/list_mcp_tools.py    enumerate MCP tools from the running binary
 5. **Grafana Cloud has no anonymous access**, so dashboards cannot be iframed
    directly. Snapshots are the embed path, and `create_snapshot` needs a real
    dashboard payload — an empty one returns "Dashboard not found".
-6. **Grafana Incident is not initialised on this org.** `create_incident` fails
-   on a foreign-key constraint. Annotation, dashboard and snapshot all work,
-   which is why write-back was never allowed to rest on incidents alone.
+6. **The incident plugin is `grafana-irm-app`, not `grafana-incident-app`.**
+   Grafana merged Incident and OnCall into IRM and the old id 404s with
+   "Plugin not found". Incidents also need the org's counter row to exist:
+   the first CreateIncident call creates it, and until then the MCP tool fails
+   with a foreign-key constraint on `grafana_incident.Counters`. Both are now
+   done on this stack and `create_incident` works over MCP.
 
 ## Rules that shaped the design
 
