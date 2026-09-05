@@ -15,6 +15,14 @@ Deadline: **2:00 PM PT, Tue 9 Sept 2026** (2:30 AM IST Sept 10). Submit by 6 PM 
 - **72 tools enumerated from the running server** -> `docs/mcp-tools.txt`.
   All headline write tools confirmed present.
 
+- **Simulator complete and runnable with no credentials** (`--dry-run`):
+  1200 shots, 200 nodes, licence pool, texture cache, four injectable faults.
+  Verified the four fault signatures are distinguishable from telemetry alone,
+  and that `corrupt-frame` is invisible in every metric -- which is the whole
+  argument for the vision check.
+- `scripts/preflight.py` proves the ingest path end to end, including that the
+  service account can WRITE, not just read.
+
 ### Blocked on manual setup
 - Grafana Cloud account, OTLP credentials, Admin service-account token.
 - Google Cloud project + billing (lead time), gcloud CLI install.
@@ -30,3 +38,10 @@ Deadline: **2:00 PM PT, Tue 9 Sept 2026** (2:30 AM IST Sept 10). Submit by 6 PM 
   escape hatch to any Grafana API — a fallback for anything without a tool.
 - `get_panel_image` returns a panel PNG as base64, which removes the Grafana
   Cloud iframe/anonymous-access problem entirely for the war room UI.
+
+## Known tuning, not blocking
+- Baseline node memory already peaks near 100% on a few nodes, so Scout must
+  detect OOM by rate of climb, not by highest absolute value. Revisit when the
+  real PromQL queries exist at Gate 1.
+- Too many shots read as at-risk once a farm-wide fault lands (900+ of 1200).
+  Producer's dollar figure is more legible with a handful. Tune at Gate 2.
