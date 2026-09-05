@@ -164,6 +164,14 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(f"exporting to {farm.summary().sim_time:%d %b %Y} farm -> Grafana Cloud\n")
 
+    # Traces only exist when we are actually exporting; --dry-run has no
+    # tracer provider behind it.
+    tracer = None
+    if not args.dry_run:
+        from sim.tracing import FrameTracer
+
+        tracer = FrameTracer(seed=args.seed)
+
     signal.signal(signal.SIGINT, _stop)
 
     started = time.monotonic()
@@ -179,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
 
             _emit_routine(log, farm, rng)
             _emit_fault_events(log, farm)
+            if tracer is not None:
+                tracer.observe(farm)
             _print_status(farm)
 
             if args.duration and time.monotonic() - started >= args.duration:
