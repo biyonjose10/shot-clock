@@ -101,6 +101,11 @@ async def run_agent(
         new_message=types.Content(role="user", parts=[types.Part(text=prompt)]),
     ):
         turns += 1
+        # Recorded per turn, not at the end: a run that dies on a 429 has still
+        # spent every call it made, and accounting for it only on success left
+        # the ledger believing an exhausted model was fresh.
+        if model_name:
+            record_use(model_name, 1)
         text = _event_text(event)
         if not text:
             continue
@@ -109,8 +114,6 @@ async def run_agent(
         jnl.record(J.AGENT_THOUGHT, actor, text=text)
         final = text
 
-    if model_name:
-        record_use(model_name, max(turns, 1))
     return final
 
 

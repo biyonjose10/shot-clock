@@ -1,0 +1,102 @@
+{
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "expr": "render_frame_duration_seconds",
+          "refId": "A"
+        }
+      ],
+      "title": "Frame duration by shot",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "texture_cache_hit_ratio",
+          "refId": "A"
+        }
+      ],
+      "title": "Texture cache hit ratio",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "farm_frames_per_hour",
+          "refId": "A"
+        }
+      ],
+      "title": "Farm throughput (frames/hour)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "licence_pool_available",
+          "refId": "A"
+        },
+        {
+          "expr": "queue_depth",
+          "refId": "B"
+        }
+      ],
+      "title": "Licences free / queue depth",
+      "type": "timeseries"
+    }
+  ],
+  "tags": [
+    "shot-clock"
+  ],
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "Shot Clock - Render Farm",
+  "uid": "shot-clock-farm"
+}
