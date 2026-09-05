@@ -185,23 +185,36 @@ def _apply_grain(image: Image.Image, rng: random.Random, strength: int = 6) -> I
 def _apply_fireflies(image: Image.Image, rng: random.Random) -> Image.Image:
     """Scatter blown-out speckles: undersampled indirect light in Arnold.
 
-    Sparse and isolated, which is what the artifact actually looks like. Dense
-    speckle reads as a starfield, and a starfield is a plausible creative
-    choice rather than a defect -- exactly the wrong call for the tech check.
+    Placement is the whole game. Scattered evenly over the frame, this reads as
+    a starfield -- and a starfield in a night plate is a plausible creative
+    choice, not a defect, which is exactly the wrong answer from a tech check.
+
+    Real fireflies come from indirect light that did not converge, so they land
+    on and around geometry: building faces, the ground plane, the areas in
+    shadow. They do not appear in clear sky. Keeping them out of the upper sky
+    band removes the "those are stars" reading entirely.
     """
+    top = int(FRAME_HEIGHT * 0.30)  # everything above this is open sky
+
+    def _y() -> int:
+        # Bias toward the lower frame, where the geometry and ground plane are.
+        return int(top + (FRAME_HEIGHT - top) * (rng.random() ** 0.65))
+
     draw = ImageDraw.Draw(image)
-    for _ in range(260):
+    for _ in range(240):
         x = rng.randrange(FRAME_WIDTH)
-        y = rng.randrange(FRAME_HEIGHT)
-        size = rng.choice((0, 0, 1, 1, 2))
+        y = _y()
+        size = rng.choice((0, 1, 1, 2))
         draw.ellipse((x, y, x + size, y + size), fill=(255, 255, 255))
-    # A handful of larger, unmistakable hot pixels with a little bloom.
+
+    # The unmistakable ones: bright, bloomed, sitting on top of solid geometry.
     glow = Image.new("RGB", FRAME_SIZE, (0, 0, 0))
     glow_draw = ImageDraw.Draw(glow)
-    for _ in range(22):
+    for _ in range(46):
         x = rng.randrange(FRAME_WIDTH)
-        y = rng.randrange(FRAME_HEIGHT)
-        glow_draw.ellipse((x - 3, y - 3, x + 3, y + 3), fill=(255, 255, 255))
+        y = _y()
+        r = rng.choice((3, 3, 4, 5))
+        glow_draw.ellipse((x - r, y - r, x + r, y + r), fill=(255, 255, 255))
     return ImageChops.add(image, glow.filter(ImageFilter.GaussianBlur(2)))
 
 
