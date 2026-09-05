@@ -679,3 +679,39 @@ button { font: inherit; color: inherit; }
   .panel { max-height: 92vh; }
   .caption p { font-size: 26px; max-width: 26ch; }
 }
+
+
+/* --- live tech check ---------------------------------------------------- */
+/* The only control on this page that actually calls a model. Styled as a
+   secondary action so it reads as a deliberate, separate thing from the
+   replay, which is exactly what it is. */
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--line, #3a3a3a);
+  color: var(--ink-dim, #b9b4ab);
+  margin-left: 8px;
+}
+.btn--ghost:hover:not(:disabled) { color: var(--ink, #efeae1); border-color: var(--warm, #e8a33d); }
+.btn--ghost:disabled { opacity: .5; cursor: progress; }
+
+.tcheck { display: grid; grid-template-columns: 168px 1fr; gap: 14px; align-items: start;
+  border: 1px solid var(--line, #3a3a3a); border-left: 3px solid var(--warm, #e8a33d);
+  padding: 12px; margin-bottom: 14px; background: rgba(232,163,61,.04); }
+.tcheck img { width: 100%; display: block; border: 1px solid rgba(255,255,255,.08); }
+.tcheck__verdict { font-family: 'Barlow Condensed', system-ui, sans-serif;
+  font-size: 22px; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 4px; }
+.tcheck__verdict.is-defect { color: var(--bad, #e5563f); }
+.tcheck__verdict.is-clean  { color: var(--good, #57bfa4); }
+.tcheck__meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  color: var(--ink-faint, #8b857c); margin: 0 0 6px; }
+.tcheck__evidence { font-size: 13px; line-height: 1.5; margin: 0; color: var(--ink-dim, #b9b4ab); }
+.tcheck__live { display: inline-block; font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  border: 1px solid var(--warm, #e8a33d); color: var(--warm, #e8a33d);
+  padding: 1px 6px; margin-left: 8px; vertical-align: 2px; }
+
+/* The film title was truncating on narrower screens; let it use the space. */
+.slate__film h1 { white-space: nowrap; }
+@media (max-width: 1680px) {
+  .slate__film h1 { font-size: clamp(18px, 1.5vw, 26px); }
+}

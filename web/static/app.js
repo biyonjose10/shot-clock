@@ -745,3 +745,80 @@
     boot();
   }
 })();
+
+
+/* --- live tech check -----------------------------------------------------
+   Everything else on this page is a replay of a recorded run. This button is
+   the exception: it sends a rendered frame to Gemini on Vertex AI and waits
+   for a real verdict. It is capped server-side, so it cannot be hammered. */
+(function () {
+  const btn = document.getElementById('check-btn');
+  const report = document.getElementById('report');
+  if (!btn || !report) return;
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Gemini is looking…';
+    try {
+      const res = await fetch('/api/tech-check', { method: 'POST' });
+      const data = await res.json();
+      render(data);
+    } catch (err) {
+      render({ ok: false, error: String(err) });
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  });
+
+  function render(d) {
+    const empty = report.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const card = document.createElement('div');
+    card.className = 'tcheck';
+
+    if (!d.ok) {
+      card.innerHTML =
+        '<div></div><div><p class="tcheck__verdict is-defect">Tech check unavailable</p>' +
+        '<p class="tcheck__evidence"></p></div>';
+      card.querySelector('.tcheck__evidence').textContent = d.error || 'unknown error';
+      report.prepend(card);
+      return;
+    }
+
+    const defect = d.verdict !== 'clean';
+    const shot = document.createElement('img');
+    shot.src = d.image;
+    shot.alt = d.shot_id + ' frame ' + d.frame;
+
+    const body = document.createElement('div');
+    const h = document.createElement('p');
+    h.className = 'tcheck__verdict ' + (defect ? 'is-defect' : 'is-clean');
+    h.textContent = (defect ? 'Reject · ' : 'Pass · ') + d.verdict.replace(/_/g, ' ');
+    if (d.live) {
+      const tag = document.createElement('span');
+      tag.className = 'tcheck__live';
+      tag.textContent = 'live · ' + (d.via || 'gemini');
+      h.appendChild(tag);
+    }
+
+    const meta = document.createElement('p');
+    meta.className = 'tcheck__meta';
+    meta.textContent =
+      d.shot_id + ' f' + String(d.frame).padStart(4, '0') +
+      ' · ' + Math.round((d.confidence || 0) * 100) + '% confidence' +
+      ' · ' + (d.model || '') +
+      (d.cached ? ' · cached (daily cap reached)' : '') +
+      (typeof d.remaining === 'number' ? ' · ' + d.remaining + ' checks left today' : '');
+
+    const ev = document.createElement('p');
+    ev.className = 'tcheck__evidence';
+    ev.textContent = d.evidence || '';
+
+    body.append(h, meta, ev);
+    card.append(shot, body);
+    report.prepend(card);
+  }
+})();

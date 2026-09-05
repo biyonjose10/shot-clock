@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/static/app.css?v=1">
+<link rel="stylesheet" href="/static/app.css?v=2">
 </head>
 <body>
 
@@ -17,7 +17,7 @@
     <div class="wordmark">SHOT<span>CLOCK</span></div>
     <div class="slate__film">
       <span class="eyebrow">Feature in delivery</span>
-      <h1 id="film-title">—</h1>
+      <h1 id="film-title" title="">—</h1>
       <p class="slate__sub" id="film-sub">&nbsp;</p>
     </div>
   </div>
@@ -32,6 +32,7 @@
 
   <div class="slate__actions">
     <button class="btn" id="demo-btn" type="button">Run demo</button>
+    <button class="btn btn--ghost" id="check-btn" type="button" title="Sends a rendered frame to Gemini on Vertex AI, right now">Tech check a frame</button>
     <div class="feedstate"><span class="dot" id="feed-dot"></span><span id="feed-label">connecting</span></div>
   </div>
 </header>
@@ -87,6 +88,6 @@
 <!-- Lower third, drawn by the UI so the demo video needs no post. -->
 <div class="caption" id="caption" aria-live="polite"><div class="caption__rule"></div><p id="caption-text"></p></div>
 
-<script src="/static/app.js?v=1"></script>
+<script src="/static/app.js?v=2"></script>
 </body>
 </html>

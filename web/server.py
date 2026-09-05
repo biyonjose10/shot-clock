@@ -39,6 +39,16 @@ log = logging.getLogger("shot_clock.web")
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
+
+# Local development reads .env; on Cloud Run the same names arrive as real
+# environment variables and secrets, and load_dotenv is a no-op.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT / ".env")
+except Exception:  # noqa: BLE001 - dotenv is a convenience, never a dependency
+    pass
+
 STATIC_DIR = HERE / "static"
 INDEX_HTML = HERE / "templates" / "index.html"
 
@@ -439,6 +449,38 @@ async def status() -> JSONResponse:
             "sim_time": CONSOLE.board.get("sim_time"),
         }
     )
+
+
+@app.post("/api/tech-check")
+async def tech_check() -> JSONResponse:
+    """The one genuinely live model call this service makes.
+
+    Everything else on this page replays a recorded journal, which is why a
+    visitor cannot run up a bill. This endpoint really does send a rendered
+    frame to Gemini through Vertex AI, because a contest rule requires Google
+    Cloud to be called at runtime and a pure replay never calls anything.
+
+    Capped per day in agent.live_check. Past the cap the last real verdict is
+    returned, labelled as cached.
+    """
+    import asyncio as _asyncio
+
+    from agent import live_check
+
+    try:
+        # The model call is blocking, so keep it off the event loop or the SSE
+        # stream stalls for every other viewer while one judge waits.
+        result = await _asyncio.to_thread(live_check.run)
+    except Exception as exc:  # noqa: BLE001 - surface it, never 500 the page
+        return JSONResponse(
+            {
+                "ok": False,
+                "error": f"{type(exc).__name__}: {exc}",
+                "remaining": live_check.remaining(),
+            },
+            status_code=200,
+        )
+    return JSONResponse({"ok": True, **result})
 
 
 if __name__ == "__main__":  # pragma: no cover

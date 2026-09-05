@@ -74,6 +74,7 @@ def run(
 
         # Imported here, not at module scope: the war room must start and serve
         # the replay even with no model credentials configured at all.
+        from agent.models import VISION_MODEL
         from agent.vision import tech_check
         from sim.frames import render_frame
 
@@ -89,7 +90,10 @@ def run(
             "region": verdict.region,
             "deliverable": verdict.deliverable,
             "image": "/static/frames/" + path.name,
-            "model": os.environ.get("SHOT_CLOCK_VISION_MODEL", "gemini-3.5-flash"),
+            # Read the real value rather than restating a default: this string
+            # is shown to whoever pressed the button, and a wrong model name is
+            # worse than none.
+            "model": VISION_MODEL,
             "via": "vertex-ai"
             if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").upper() == "TRUE"
             else "ai-studio",
