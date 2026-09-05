@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.git/
+bin/
+journals/live-*.jsonl
+journals/.model_usage.json
+web/static/frames/*.png
+docs/*.md
