@@ -2,6 +2,8 @@
 
 **An autonomous SRE crew for a visual effects render farm.**
 
+**Live:** https://shot-clock-669554430519.us-central1.run.app
+
 A VFX studio has 1,200 shots and a delivery date that does not move. Shot Clock
 is a crew of Gemini agents that watches the render farm's telemetry in Grafana,
 works out which shots will miss the date, proves why, looks at the actual

@@ -16,6 +16,7 @@ Public repo, MIT: https://github.com/biyonjose10/shot-clock
 | War room console + DEMO MODE replay | done |
 | Write-back proven: annotation, dashboard, snapshot | done |
 | README, Dockerfile, deploy.sh, ADK root_agent | done |
+| **Deployed to Cloud Run**, judge-cold tested | done |
 | Narration script, TTS generator with enforced 2:40 budget | done |
 
 ## Left
@@ -24,9 +25,11 @@ Public repo, MIT: https://github.com/biyonjose10/shot-clock
    Blocked on free quota until it resets ~12:30 PM IST.
    The war room already prefers `demo-*.jsonl` over the scripted stand-in, so
    the recording drops in with no code change.
-2. Deploy to Cloud Run (`./deploy.sh`) — needs gcloud installed and the Vertex
-   AI, Cloud Run, Cloud Build and Secret Manager APIs enabled.
-3. Judge-cold test in a private window.
+2. Wire `agent/live_check.py` into the web server as the one live Vertex AI
+   call, so the runtime requirement is satisfied. Built and capped; not yet
+   exposed as an endpoint. Goes in with the real journal so we deploy once.
+3. Header truncates the film title below ~1600px wide. Cosmetic, but judges
+   use varied screens.
 4. Generate voiceover + score, record one continuous take, upload, submit.
 
 ## Waiting on the user
@@ -40,3 +43,16 @@ Public repo, MIT: https://github.com/biyonjose10/shot-clock
 
 Free tier is 20 requests/day per model; one agent run is about 20. Six models
 are in rotation, so roughly three agent runs a day. A full crew run is four.
+
+## Deployment
+
+Live: https://shot-clock-669554430519.us-central1.run.app
+Cold start measured at 0.72s, which is why min-instances stays at 0.
+
+    ./gcloud.sh ...            locally installed CLI, nothing on system PATH
+    ./setup_gcp.sh             APIs, secrets, IAM (one time, done)
+    ./deploy.sh                build and deploy
+
+A $3 budget alert is armed at 50/90/100%. The deployed app imports only the
+journal module, so no visitor can make it spend Gemini credit; the one live
+call is added deliberately and capped at 40 a day.
