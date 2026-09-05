@@ -107,10 +107,10 @@ def usage_today() -> dict[str, int]:
 
 def budget_report() -> str:
     used = usage_today()
-    lines = ["  model                        agent-runs-started  free calls left"]
+    lines = ["  model                        calls used  free calls left"]
     for m in MODEL_POOL:
         u = used.get(m, 0)
-        lines.append(f"  {m:26s} {u:12d}  {max(DAILY_BUDGET - u, 0):14d}")
+        lines.append(f"  {m:26s} {u:10d}  {max(DAILY_BUDGET - u, 0):14d}")
     return "\n".join(lines)
 
 
@@ -139,7 +139,6 @@ def crew_llm(role: str = "scout"):
 
     assert_not_paid_key()
     model = model_for(role)
-    record_use(model)
     return Gemini(
         model=model,
         retry_options=types.HttpRetryOptions(

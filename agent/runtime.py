@@ -16,6 +16,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from agent import journal as J
+from agent.models import record_use
 
 APP_NAME = "shot-clock"
 USER_ID = "supervisor"
@@ -86,12 +87,20 @@ async def run_agent(
 
     jnl.record(J.AGENT_START, actor, prompt=prompt)
 
+    # The daily quota meters model requests, not agent runs. Each tool round
+    # trip is another request, so a single investigation can be 15 of them --
+    # counting once per agent undercounts by an order of magnitude and makes
+    # rotation useless.
+    model_name = getattr(getattr(agent, "model", None), "model", None)
+    turns = 0
+
     final = ""
     async for event in runner.run_async(
         user_id=USER_ID,
         session_id=session.id,
         new_message=types.Content(role="user", parts=[types.Part(text=prompt)]),
     ):
+        turns += 1
         text = _event_text(event)
         if not text:
             continue
@@ -100,6 +109,8 @@ async def run_agent(
         jnl.record(J.AGENT_THOUGHT, actor, text=text)
         final = text
 
+    if model_name:
+        record_use(model_name, max(turns, 1))
     return final
 
 
