@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shot Clock — delivery war room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/static/app.css?v=1">
+</head>
+<body>
+
+<!-- The slate: what film, how long is left, and how the farm is doing. -->
+<header class="slate">
+  <div class="slate__id">
+    <div class="wordmark">SHOT<span>CLOCK</span></div>
+    <div class="slate__film">
+      <span class="eyebrow">Feature in delivery</span>
+      <h1 id="film-title">—</h1>
+      <p class="slate__sub" id="film-sub">&nbsp;</p>
+    </div>
+  </div>
+
+  <div class="slate__clock">
+    <span class="eyebrow">Time to delivery</span>
+    <div class="countdown" id="countdown">--d --:--</div>
+    <p class="slate__sub" id="simclock">&nbsp;</p>
+  </div>
+
+  <div class="vitals" id="vitals"></div>
+
+  <div class="slate__actions">
+    <button class="btn" id="demo-btn" type="button">Run demo</button>
+    <div class="feedstate"><span class="dot" id="feed-dot"></span><span id="feed-label">connecting</span></div>
+  </div>
+</header>
+
+<main class="stage">
+
+  <!-- 1. SHOT BOARD -->
+  <section class="panel panel--board">
+    <div class="panel__head">
+      <h2>Shot board</h2>
+      <span class="panel__note" id="board-note">&nbsp;</span>
+    </div>
+
+    <div class="legend" id="legend"></div>
+
+    <div class="shot-grid" id="shot-grid"></div>
+
+    <div class="backlog">
+      <div class="backlog__head">
+        <h3>Backlog by sequence</h3>
+        <span class="panel__note" id="backlog-note">&nbsp;</span>
+      </div>
+      <div class="seq-list" id="seq-list"></div>
+    </div>
+  </section>
+
+  <!-- 2. AGENT TRACE -->
+  <section class="panel panel--trace">
+    <div class="panel__head">
+      <h2>Crew trace</h2>
+      <span class="panel__note" id="trace-note">standing by</span>
+    </div>
+    <div class="crewbar" id="crewbar"></div>
+    <div class="trace" id="trace">
+      <p class="empty" id="trace-empty">No run in progress. Start the demo to replay a recorded incident.</p>
+    </div>
+    <button class="jump" id="jump" type="button" hidden>Jump to latest</button>
+  </section>
+
+  <!-- 3. REPORT -->
+  <section class="panel panel--report">
+    <div class="panel__head">
+      <h2>Production note</h2>
+      <span class="panel__note" id="report-note">&nbsp;</span>
+    </div>
+    <div class="report" id="report">
+      <p class="empty">First AD files here: the costing, the note, and the link back into Grafana.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- Lower third, drawn by the UI so the demo video needs no post. -->
+<div class="caption" id="caption" aria-live="polite"><div class="caption__rule"></div><p id="caption-text"></p></div>
+
+<script src="/static/app.js?v=1"></script>
+</body>
+</html>
