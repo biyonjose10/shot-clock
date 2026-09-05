@@ -38,12 +38,18 @@ scripts/list_mcp_tools.py    enumerate MCP tools from the running binary
 3. **Free-tier Gemini is 20 requests per day PER MODEL.** One agent run is ~20.
    `agent/models.py` rotates a model per crew role and keeps a usage ledger.
    `assert_not_paid_key()` refuses the paid key unless `SHOT_CLOCK_ALLOW_PAID=1`.
-4. **The stack has three Loki datasources.** The first alphabetically is
+4. **Vertex AI and AI Studio expose disjoint model sets.** On the free AI
+   Studio project `gemini-2.5-flash` is refused as "no longer available to new
+   users" while the 3.x line works; on Vertex it is exactly reversed and every
+   3.x id returns "Publisher model ... was not found". `agent/models.py`
+   resolves the model from `GOOGLE_GENAI_USE_VERTEXAI`. A build tested only
+   against AI Studio 404s for every visitor once deployed.
+5. **The stack has three Loki datasources.** The first alphabetically is
    `alert-state-history`, permanently empty. Uids are pinned in `agent/mcp.py`.
-5. **Grafana Cloud has no anonymous access**, so dashboards cannot be iframed
+6. **Grafana Cloud has no anonymous access**, so dashboards cannot be iframed
    directly. Snapshots are the embed path, and `create_snapshot` needs a real
    dashboard payload — an empty one returns "Dashboard not found".
-6. **The incident plugin is `grafana-irm-app`, not `grafana-incident-app`.**
+7. **The incident plugin is `grafana-irm-app`, not `grafana-incident-app`.**
    Grafana merged Incident and OnCall into IRM and the old id 404s with
    "Plugin not found". Incidents also need the org's counter row to exist:
    the first CreateIncident call creates it, and until then the MCP tool fails

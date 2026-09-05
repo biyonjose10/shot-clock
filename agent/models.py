@@ -56,8 +56,27 @@ ROLE_MODELS: dict[str, str] = {
     "vision": "gemini-3-flash-preview",
 }
 
-CREW_MODEL = os.environ.get("SHOT_CLOCK_CREW_MODEL", MODEL_POOL[0])
-VISION_MODEL = os.environ.get("SHOT_CLOCK_VISION_MODEL", ROLE_MODELS["vision"])
+#: Vertex AI and AI Studio do NOT expose the same models, and the difference is
+#: not a version skew -- it is disjoint. On this project's free AI Studio key
+#: gemini-2.5-flash is refused ("no longer available to new users") while the
+#: 3.x line works; on Vertex it is the exact reverse, and every 3.x id returns
+#: "Publisher model ... was not found". A build that only ever ran against AI
+#: Studio therefore 404s for every visitor the moment it is deployed on Vertex.
+#: Verified by real generateContent calls against both backends.
+VERTEX_CREW_MODEL = os.environ.get("SHOT_CLOCK_VERTEX_MODEL", "gemini-2.5-flash")
+VERTEX_VISION_MODEL = os.environ.get("SHOT_CLOCK_VERTEX_MODEL", "gemini-2.5-flash")
+
+
+def on_vertex() -> bool:
+    return os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").upper() == "TRUE"
+
+
+CREW_MODEL = os.environ.get("SHOT_CLOCK_CREW_MODEL") or (
+    VERTEX_CREW_MODEL if on_vertex() else MODEL_POOL[0]
+)
+VISION_MODEL = os.environ.get("SHOT_CLOCK_VISION_MODEL") or (
+    VERTEX_VISION_MODEL if on_vertex() else ROLE_MODELS["vision"]
+)
 TTS_MODEL = os.environ.get("SHOT_CLOCK_TTS_MODEL", "gemini-2.5-flash-preview-tts")
 
 
@@ -116,6 +135,11 @@ def budget_report() -> str:
 
 def model_for(role: str) -> str:
     """The model for this role, skipping any believed exhausted today."""
+    if on_vertex():
+        # Vertex bills per call rather than rationing per day, so there is no
+        # quota to rotate around -- and the 3.x ids the rotation uses do not
+        # exist there at all.
+        return CREW_MODEL
     preferred = os.environ.get("SHOT_CLOCK_CREW_MODEL") or ROLE_MODELS.get(role)
     used = usage_today()
     if preferred and used.get(preferred, 0) < DAILY_BUDGET:
