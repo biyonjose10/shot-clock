@@ -67,7 +67,7 @@ search_plugin_information              Search the Grafana plugin catalog by keyw
 suggest_loki_alloy_label_config        Generates an Alloy loki.process snippet enforcing an approved label set via stage.label_ke
 update_alert_group                     Update the state of a Grafana OnCall alert group: acknowledge, unacknowledge, resolve, or 
 update_annotation                      Updates the provided properties of an annotation by ID. Only fields included in the reques
-update_dashboard                       Create or update a dashboard. Two modes: (1) Full JSON — provide 'dashboard' for new dashb
+update_dashboard                       Create or update a dashboard. Two modes: (1) Full JSON â€” provide 'dashboard' for new dashb
 update_datasource                      Update non-secret datasource fields by UID. Omitted fields are preserved. IMPORTANT: alway
 update_incident                        Update an existing Grafana incident by ID. Allows changing the status ('active' or 'resolv
 user_info                              Get information about the current Grafana identity: login, email, name, whether it is a Gr
