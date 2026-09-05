@@ -148,6 +148,30 @@ class FarmTelemetry:
             callbacks=[self._observe_queue_depth],
             description="Shots waiting for a free node",
         )
+        # Delivery position. These are farm-wide (one series each) on purpose:
+        # most at-risk shots are in the 1,160-shot backlog and never appear in
+        # the per-shot metrics, so without these the agents can only see the 40
+        # shots currently in flight and would badly understate the exposure.
+        meter.create_observable_gauge(
+            "shots_at_risk",
+            callbacks=[self._observe_shots_at_risk],
+            description="Shots projected to finish after the delivery date",
+        )
+        meter.create_observable_gauge(
+            "shots_complete",
+            callbacks=[self._observe_shots_complete],
+            description="Shots delivered",
+        )
+        meter.create_observable_gauge(
+            "shots_failed",
+            callbacks=[self._observe_shots_failed],
+            description="Shots that exhausted their retries",
+        )
+        meter.create_observable_gauge(
+            "farm_frames_per_hour",
+            callbacks=[self._observe_frames_per_hour],
+            description="Farm-wide throughput, the number the delivery date depends on",
+        )
 
     def _start_traces(self) -> None:
         self._tracer_provider = TracerProvider(resource=self._resource)
@@ -208,6 +232,18 @@ class FarmTelemetry:
 
     def _observe_queue_depth(self, options: CallbackOptions) -> Iterable[Observation]:
         yield Observation(self.farm.summary().queue_depth, {})
+
+    def _observe_shots_at_risk(self, options: CallbackOptions) -> Iterable[Observation]:
+        yield Observation(self.farm.summary().shots_at_risk, {})
+
+    def _observe_shots_complete(self, options: CallbackOptions) -> Iterable[Observation]:
+        yield Observation(self.farm.summary().shots_complete, {})
+
+    def _observe_shots_failed(self, options: CallbackOptions) -> Iterable[Observation]:
+        yield Observation(self.farm.summary().shots_failed, {})
+
+    def _observe_frames_per_hour(self, options: CallbackOptions) -> Iterable[Observation]:
+        yield Observation(self.farm.summary().frames_per_hour, {})
 
     @staticmethod
     def _shot_labels(shot) -> dict[str, str]:

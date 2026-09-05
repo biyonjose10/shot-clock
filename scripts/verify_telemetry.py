@@ -30,6 +30,10 @@ EXPECTED_METRICS = [
     "licence_pool_available",
     "texture_cache_hit_ratio",
     "queue_depth",
+    "shots_at_risk",
+    "shots_complete",
+    "shots_failed",
+    "farm_frames_per_hour",
 ]
 
 
