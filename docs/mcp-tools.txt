@@ -1,0 +1,74 @@
+TOTAL TOOLS: 72
+
+add_activity_to_incident               Add a note (userNote activity) to an existing incident's timeline using its ID. The note b
+alerting_manage_routing                Manage Grafana alerting routing configuration, including notification policies, contact po
+alerting_manage_rules                  Manage Grafana alert rules with full CRUD capabilities and filtering.
+alerting_manage_silences               Manage Grafana alerting silences. A silence temporarily suppresses notifications for alert
+analyze_loki_labels                    Audits a Loki label strategy and optionally diagnoses query performance. Returns per-label
+check_datasources_health               Check datasource health. Filter by type or UIDs; omit both to check all.
+create_annotation                      Create a new annotation on a dashboard or panel. Set format to 'graphite' and provide 'wha
+create_datasource                      Create a datasource. If type is ambiguous, call search_plugin_information first; install t
+create_folder                          Create a Grafana folder. Provide a title and optional UID. Returns the created folder.
+create_incident                        Create a new Grafana incident. Requires title, severity, and room prefix. Allows setting s
+create_snapshot                        Create a Grafana snapshot from a full dashboard payload. Supports optional expiration and 
+delete_snapshot                        Delete a Grafana snapshot by snapshot key.
+find_error_pattern_logs                Searches Loki logs for elevated error patterns compared to the last day's average, waits f
+find_slow_requests                     Searches relevant Tempo datasources for slow requests, waits for the analysis to complete,
+generate_deeplink                      Generate deeplink URLs for Grafana resources. Supports dashboards (requires dashboardUid o
+get_alert_group                        Get a specific alert group from Grafana OnCall by its ID. Returns the full alert group det
+get_annotation_tags                    Returns annotation tags with optional filtering by tag name. Only the provided filters are
+get_annotations                        Fetch Grafana annotations using filters such as dashboard UID, time range and tags.
+get_assertions                         Get assertion summary for a given entity with its type, name, env, site, namespace, and a 
+get_current_oncall_users               Get the list of users currently on-call for a specific Grafana OnCall schedule ID. Returns
+get_dashboard_by_uid                   Retrieves the complete dashboard, including panels, variables, and settings, for a specifi
+get_dashboard_panel_queries            Retrieve panel queries from a Grafana dashboard. Supports all datasource types (Prometheus
+get_dashboard_property                 Get specific parts of a dashboard using JSONPath expressions to minimize context window us
+get_dashboard_summary                  Get a compact summary of a dashboard including title\, panel count\, panel types\, variabl
+get_datasource                         Retrieves detailed information about a specific datasource by UID or name. Returns the ful
+get_doc                                Fetch a Grafana documentation page. Set outline_only=true to get the heading structure fir
+get_incident                           Get a single incident by ID. Returns the full incident details including title, status, se
+get_oncall_shift                       Get detailed information for a specific Grafana OnCall shift using its ID. A shift represe
+get_panel_image                        Render a Grafana dashboard panel or full dashboard as a PNG image. Returns the image as ba
+get_plugin                             Check whether a Grafana plugin is installed and retrieve its details (name, version, type,
+get_sift_analysis                      Retrieves a specific analysis from an investigation by its UUID. The investigation ID and 
+get_sift_investigation                 Retrieves an existing Sift investigation by its UUID. The ID should be provided as a strin
+get_snapshot                           Get a Grafana snapshot by key, including snapshot metadata and dashboard payload.
+grafana_api_request                    Make an authenticated HTTP request to the Grafana API. Similar to 'gh api' for GitHub. Sup
+install_plugin                         Install a Grafana plugin by its plugin ID. If the version is not already confirmed with th
+list_alert_groups                      List alert groups from Grafana OnCall with filtering options. Supports filtering by alert 
+list_datasources                       List all configured datasources in Grafana. Use this to discover available datasources and
+list_incident_custom_fields            List the custom fields configured for Grafana incidents, including their type and, for sel
+list_incidents                         List Grafana incidents. Allows filtering by status ('active', 'resolved') and optionally i
+list_loki_label_names                  Lists all available label/field names (keys) found in logs within a specified Loki or Vict
+list_loki_label_values                 Retrieves all unique values associated with a specific `labelName` within a Loki or Victor
+list_oncall_schedules                  List Grafana OnCall schedules, optionally filtering by team ID. If a specific schedule ID 
+list_oncall_teams                      List teams configured in Grafana OnCall. Returns a list of team objects with their details
+list_oncall_users                      List users from Grafana OnCall. These are OnCall users (separate from Grafana users). Can 
+list_prometheus_label_names            List label names in a PromQL-compatible datasource (Prometheus, Thanos, Mimir, Cloud Monit
+list_prometheus_label_values           Use after list_prometheus_metric_names to find label values for filtering queries. Gets th
+list_prometheus_metric_metadata        List Prometheus metric metadata. Returns metadata about metrics currently scraped from tar
+list_prometheus_metric_names           DISCOVERY: Call this first to find available metrics before querying. Lists metric names i
+list_provisioning_repositories         List provisioning repositories (e.g. git-sync sources) configured for this Grafana instanc
+list_pyroscope_label_names             Lists all available label names (keys) found in profiles within a specified Pyroscope data
+list_pyroscope_label_values            Lists all available label values for a particular label name found in profiles within a sp
+list_pyroscope_profile_types           Lists all available profile types available in a specified Pyroscope datasource and time r
+list_sift_investigations               Retrieves a list of Sift investigations with an optional limit. If no limit is specified, 
+list_snapshots                         List Grafana dashboard snapshots with optional query and result limit filters.
+query_loki_logs                        Executes a log query against a Loki or VictoriaLogs datasource and returns matching log en
+query_loki_patterns                    Retrieves detected log patterns from a Loki datasource for a given stream selector and tim
+query_loki_stats                       Retrieves index-level statistics about log streams matching a given selector within a Loki
+query_prometheus                       WORKFLOW: list_prometheus_metric_names -> list_prometheus_label_values -> query_prometheus
+query_prometheus_histogram             Query Prometheus histogram percentiles. DISCOVER FIRST: Use list_prometheus_metric_names w
+query_pyroscope                        Unified Pyroscope query tool for fetching profiles or metrics from Pyroscope. Profile data
+search_dashboards                      Search for Grafana dashboards by a query string. Returns a list of matching dashboards wit
+search_docs                            Search Grafana documentation. Returns matching pages with title, URL, description, and pro
+search_folders                         Search for Grafana folders by a query string. Returns matching folders with details like t
+search_plugin_information              Search the Grafana plugin catalog by keyword to discover available plugins before installi
+suggest_loki_alloy_label_config        Generates an Alloy loki.process snippet enforcing an approved label set via stage.label_ke
+update_alert_group                     Update the state of a Grafana OnCall alert group: acknowledge, unacknowledge, resolve, or 
+update_annotation                      Updates the provided properties of an annotation by ID. Only fields included in the reques
+update_dashboard                       Create or update a dashboard. Two modes: (1) Full JSON — provide 'dashboard' for new dashb
+update_datasource                      Update non-secret datasource fields by UID. Omitted fields are preserved. IMPORTANT: alway
+update_incident                        Update an existing Grafana incident by ID. Allows changing the status ('active' or 'resolv
+user_info                              Get information about the current Grafana identity: login, email, name, whether it is a Gr
+validate_provisioning_file             Validate a file in a provisioning repository at a given branch or commit by dry-run applyi

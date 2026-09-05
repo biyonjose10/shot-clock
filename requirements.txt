@@ -1,0 +1,20 @@
+# Google Cloud AI — used at runtime (agents + Gemini vision + TTS)
+google-adk==2.8.0
+google-genai==2.22.0
+
+# MCP client. PINNED BELOW 2.0 ON PURPOSE: mcp 2.x renamed McpError -> MCPError,
+# which google-adk 2.8.0 still imports by the old name. Unpinning breaks
+# `from google.adk.tools.mcp_tool import McpToolset` with a silent ImportError.
+mcp==1.29.1
+
+# Telemetry ingest: one OTLP exporter carries metrics, logs and traces
+opentelemetry-sdk==1.42.1
+opentelemetry-exporter-otlp-proto-http==1.42.1
+
+# War room console
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+
+httpx==0.28.1
+python-dotenv==1.2.3
+pillow==12.3.0

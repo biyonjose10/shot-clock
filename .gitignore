@@ -1,0 +1,17 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Secrets — never commit
+.env
+
+# Vendored mcp-grafana binary (downloaded by scripts/fetch_mcp_grafana.ps1)
+bin/
+
+# Ad-hoc run journals; the curated demo journal IS committed
+journals/live-*.jsonl
+
+# Generated frames and audio
+web/static/frames/*.png
+demo/*.wav
