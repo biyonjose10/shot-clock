@@ -1,50 +1,42 @@
 # Shot Clock — progress
 
-Deadline: **2:00 PM PT, Tue 9 Sept 2026** (2:30 AM IST Sept 10). Submit by 6 PM IST Sept 9.
+Deadline **2026-09-09, 2:00 PM PT**. Submitting by 6 PM IST on the 9th.
+Public repo, MIT: https://github.com/biyonjose10/shot-clock
 
-## GATE 0 — PASSED (Fri 5 Sept)
+## Done
 
-All three signals confirmed landing in Grafana Cloud stack `robustspring2217`:
-
-| Signal | Evidence |
+| | |
 |---|---|
-| Metrics | 201 node series, 48 per shot metric, 1 each farm-wide (~350 active, 10k budget) |
-| Logs | LogQL returns Arnold/Karma stderr with shot_id, node, artist |
-| Traces | Tempo returns `render_frame` traces, per-stage sub-spans, 330s under fault |
+| Gate 0 — metrics, logs AND traces live in Grafana Cloud | done |
+| Gate 1 — Scout diagnosing over real MCP calls | done |
+| Gaffer — separated licence starvation from cache collapse | done |
+| Producer — 3 tool calls, deterministic self-reading costing | done |
+| First AD — real annotation + deeplink written to Grafana | done |
+| Gemini vision tech check — 4/4 on clean and three defects | done |
+| War room console + DEMO MODE replay | done |
+| Write-back proven: annotation, dashboard, snapshot | done |
+| README, Dockerfile, deploy.sh, ADK root_agent | done |
+| Narration script, TTS generator with enforced 2:40 budget | done |
 
-- Repo + MIT licence, 10 clean commits, `commit-msg` hook blocks assistant trailers.
-- `google-adk==2.8.0` works on Python 3.14.3 — required pinning `mcp==1.29.1`
-  (mcp 2.x renamed `McpError`->`MCPError`; ADK's import fails *silently* and
-  `McpToolset` simply ceases to exist).
-- 72 MCP tools enumerated from the running binary -> `docs/mcp-tools.txt`.
-  All 26 allowlisted names validated against it.
-- Simulator: 1200 shots, 200 nodes, licence pool, texture cache, 4 faults,
-  runs fully offline with `--dry-run`.
-- Journal record/replay spine built and self-tested.
+## Left
 
-### Traps found and neutralised
-1. **`mcp<2` pin** — see above. Silent failure, would have cost a day.
-2. **Three Loki datasources.** The alphabetically-first is
-   `alert-state-history`, permanently empty. An agent landing there reports
-   "no logs" and looks broken. Uids pinned in `agent/mcp.py`.
-3. **Defect frames were a different image** from the clean frame — the defect
-   was mixed into the composition seed. Clean/corrupt now share a base plate.
-4. **Fireflies read as a starfield** at the original density; a vision model
-   would call that a creative choice, not a defect. Reduced to sparse isolated
-   hot pixels that fall on buildings and road where stars cannot.
+1. **One full crew run** to record the real journal (needs ~80 Gemini calls).
+   Blocked on free quota until it resets ~12:30 PM IST.
+   The war room already prefers `demo-*.jsonl` over the scripted stand-in, so
+   the recording drops in with no code change.
+2. Deploy to Cloud Run (`./deploy.sh`) — needs gcloud installed and the Vertex
+   AI, Cloud Run, Cloud Build and Secret Manager APIs enabled.
+3. Judge-cold test in a private window.
+4. Generate voiceover + score, record one continuous take, upload, submit.
 
-## Blocked on manual setup
-- **Google Cloud project + billing + Gemini API key** — now the critical path.
-  Gate 1 cannot start without a key.
-- **Push to public GitHub** — awaiting go-ahead.
+## Waiting on the user
 
-## Next (Gate 1, Sat 6 Sept)
-- Scout answering "which shots are at risk and why" over real MCP calls.
-- Gemini vision tech-check on a corrupt frame (pulled forward from Gate 2).
-- War room UI shell (in progress).
+- Open **Alerts & IRM** in Grafana once, so `create_incident` works and the one
+  budgeted run captures it.
+- Approve switching `GOOGLE_API_KEY` to `GOOGLE_API_KEY_PAID` for submission.
+  `assert_not_paid_key()` blocks it until then.
 
-## Known tuning, not blocking
-- Baseline node memory already peaks near 100%, so Scout must detect OOM by
-  rate of climb, not absolute value.
-- 900+ of 1200 shots read as at-risk once a farm-wide fault lands. Producer's
-  dollar figure is more legible with a handful. Tune at Gate 2.
+## Budget
+
+Free tier is 20 requests/day per model; one agent run is about 20. Six models
+are in rotation, so roughly three agent runs a day. A full crew run is four.
