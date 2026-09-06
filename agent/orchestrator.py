@@ -21,6 +21,7 @@ import json
 from pathlib import Path
 
 from agent import journal as J
+from agent.models import is_quota_error, mark_exhausted
 from agent.runtime import aclose, run_agent
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,13 +78,38 @@ async def _step(
     if done and name in done:
         return done[name]
     jnl.record(J.CAPTION, name, text=CAPTIONS[name])
-    agent = build()
-    try:
-        text = await run_agent(agent, prompt, jnl, actor=name)
-    finally:
-        await aclose(agent)
-    _save_stage(jnl.run_id, name, text)
-    return text
+
+    # A local tally can only estimate what the service thinks is left, and
+    # guessing wrong costs a whole run: this stage once died on a model the
+    # ledger believed was fresh. So take the 429 as the authority -- record
+    # that model as spent and build the stage again, which `model_for` then
+    # resolves to the next model in the pool. Only stages that produced
+    # nothing are retried, so nothing is paid for twice.
+    last_exc: Exception | None = None
+    for attempt in range(2):
+        agent = build()
+        model = getattr(getattr(agent, "model", None), "model", None)
+        try:
+            text = await run_agent(agent, prompt, jnl, actor=name)
+            _save_stage(jnl.run_id, name, text)
+            return text
+        except Exception as exc:  # noqa: BLE001 - re-raised below if not quota
+            last_exc = exc
+            if attempt == 0 and model and is_quota_error(exc):
+                mark_exhausted(model)
+                jnl.record(
+                    J.AGENT_THOUGHT,
+                    name,
+                    text=(
+                        f"{model} is out of free quota for today. Switching "
+                        f"model and starting this stage again."
+                    ),
+                )
+                continue
+            raise
+        finally:
+            await aclose(agent)
+    raise last_exc  # unreachable; the loop either returns or raises
 
 
 def _vision_step(

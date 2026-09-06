@@ -120,6 +120,26 @@ def record_use(model: str, calls: int = 1) -> None:
     LEDGER.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
+def mark_exhausted(model: str) -> None:
+    """Record that the API itself refused this model for the rest of today.
+
+    Counting requests locally can only ever estimate what the service thinks.
+    A 429 naming the model is the service telling us directly, so it is worth
+    more than the tally and overwrites it.
+    """
+    data = _load() or {"date": date.today().isoformat(), "models": {}}
+    data.setdefault("models", {})
+    data["models"][model] = max(data["models"].get(model, 0), DAILY_BUDGET)
+    LEDGER.parent.mkdir(parents=True, exist_ok=True)
+    LEDGER.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def is_quota_error(exc: BaseException) -> bool:
+    """Is this the free tier refusing a model for the rest of the day?"""
+    text = f"{type(exc).__name__} {exc}"
+    return "RESOURCE_EXHAUSTED" in text or "429" in text
+
+
 def usage_today() -> dict[str, int]:
     return dict(_load().get("models", {}))
 
