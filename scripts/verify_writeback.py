@@ -143,8 +143,12 @@ def check_snapshot(c: httpx.Client) -> bool:
 
 
 def check_incident(c: httpx.Client) -> bool | None:
+    # The plugin id is `grafana-irm-app`. Grafana merged Incident and OnCall
+    # into IRM and the old `grafana-incident-app` id 404s with "Plugin not
+    # found" -- which this check was reading as "not installed on this stack",
+    # so a working incident path was being reported as skipped.
     r = c.post(
-        "/api/plugins/grafana-incident-app/resources/api/v1/IncidentsService.CreateIncident",
+        "/api/plugins/grafana-irm-app/resources/api/v1/IncidentsService.CreateIncident",
         json={"title": "Shot Clock write-back check", "severity": "minor", "roomPrefix": "shot-clock"},
     )
     if r.status_code == 404:
