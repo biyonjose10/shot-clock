@@ -133,10 +133,12 @@ class Console:
         DEMO MODE and LIVE mode are the same code path from the browser's point
         of view, and a client that joins halfway still gets the backlog.
         """
+        last = ""
         try:
             async for event in journal_mod.replay(path, speed=speed):
                 try:
                     self.journal.record(event.kind, event.actor, **safe_payload(event.payload))
+                    last = event.kind
                 except Exception:  # pragma: no cover
                     # One malformed event must never truncate the replay: the
                     # rest of the run is still worth showing.
@@ -145,6 +147,11 @@ class Console:
             raise
         except Exception:  # pragma: no cover
             log.exception("demo replay failed")
+        # The console leaves its button on "Replaying" until a run_end arrives.
+        # A journal that lacks one -- or a replay that fell over partway --
+        # would strand the UI mid-run, so close the run out either way.
+        if last and last != journal_mod.RUN_END:
+            self.journal.record(journal_mod.RUN_END, "system")
 
 
 CONSOLE = Console()
@@ -373,6 +380,33 @@ async def events(request: Request) -> StreamingResponse:
     )
 
 
+def _is_real_complete_run(path: Path) -> bool:
+    """Is this journal a finished recording of a real crew run?
+
+    Two ways a journal fails to qualify, both of which have actually shipped:
+
+    1. It stops partway. Runs die on a 429 all the time on the free tier, and
+       resuming one leaves a fragment on disk deliberately. Replaying it gives
+       an investigation that halts at Scout and never resets the console.
+
+    2. It is scripted. A stand-in journal was once written under a live-*.jsonl
+       filename, so excluding by filename let it be picked and announced as
+       `synthetic: false` -- the site replaying a script while the README says
+       it replays a real run. A journal declares what it is in its run_start
+       payload, so trust that rather than the name it was saved under.
+    """
+    try:
+        events = journal_mod.read(path)
+    except Exception:  # noqa: BLE001 - an unreadable journal is not a candidate
+        return False
+    if not events or events[-1].kind != journal_mod.RUN_END:
+        return False
+    head = events[0]
+    if head.kind == journal_mod.RUN_START and head.payload.get("mode") == "demo":
+        return False
+    return True
+
+
 def _demo_journal(requested: str | None) -> tuple[Path, bool]:
     """Pick the journal DEMO MODE replays. Returns (path, synthetic?)."""
     if requested:
@@ -385,12 +419,19 @@ def _demo_journal(requested: str | None) -> tuple[Path, bool]:
     # A curated recording of a real crew run ships as demo-*.jsonl. Anything
     # else already on disk beats falling back to the scripted stand-in; the
     # journal this process is currently writing is not a candidate.
+    #
+    # A candidate must be a COMPLETE run. Journals of runs that died partway
+    # are ordinary on the free tier -- a 429 ends a run mid-Gaffer and leaves
+    # its fragment on disk, and resuming a run leaves one there deliberately.
+    # Picking one replays an investigation that stops dead at Scout and never
+    # resets the console, which is worse than the honest scripted stand-in.
     candidates = [
         p
         for p in journal_mod.JOURNAL_DIR.glob("*.jsonl")
         if p != CONSOLE.journal.path
         and p.stat().st_size > 0
         and not p.name.startswith(scripted_demo.FILENAME_STEM)
+        and _is_real_complete_run(p)
     ]
     candidates.sort(
         key=lambda p: (p.name.startswith("demo-"), p.stat().st_mtime), reverse=True
