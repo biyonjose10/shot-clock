@@ -66,17 +66,37 @@ class Event:
         return Event(**json.loads(line))
 
 
+#: Seconds to insert between the last event of an interrupted run and the
+#: first event of its continuation. The free-tier quota is per model per day,
+#: so a run that dies on a 429 is resumed the next day; recording the real
+#: eighteen-hour gap would claim the Producer sat thinking overnight.
+RESUME_GAP = 2.0
+
+
 class Journal:
     """Append-only run record with a live fan-out for the war room UI."""
 
-    def __init__(self, run_id: str | None = None, path: Path | None = None) -> None:
+    def __init__(
+        self,
+        run_id: str | None = None,
+        path: Path | None = None,
+        resume: bool = False,
+    ) -> None:
         self.run_id = run_id or f"live-{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
         JOURNAL_DIR.mkdir(parents=True, exist_ok=True)
         self.path = path or JOURNAL_DIR / f"{self.run_id}.jsonl"
         self._started = time.monotonic()
         self._seq = 0
+        self._offset_base = 0.0
         self._subscribers: list[asyncio.Queue[Event | None]] = []
         self._events: list[Event] = []
+        if resume and self.path.exists():
+            # Continue an interrupted run: adopt its events, its sequence
+            # numbers and its timeline, then append as though nothing stopped.
+            self._events = read(self.path)
+            if self._events:
+                self._seq = self._events[-1].seq
+                self._offset_base = self._events[-1].offset + RESUME_GAP
 
     # -- writing -----------------------------------------------------------
     def record(self, kind: str, actor: str = "system", **payload: Any) -> Event:
@@ -85,7 +105,7 @@ class Journal:
         event = Event(
             kind=kind,
             actor=actor,
-            offset=round(time.monotonic() - self._started, 3),
+            offset=round(self._offset_base + time.monotonic() - self._started, 3),
             payload=payload,
             seq=self._seq,
         )
