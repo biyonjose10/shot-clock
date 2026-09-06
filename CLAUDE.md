@@ -56,6 +56,25 @@ scripts/list_mcp_tools.py    enumerate MCP tools from the running binary
    with a foreign-key constraint on `grafana_incident.Counters`. Both are now
    done on this stack and `create_incident` works over MCP.
 
+8. **The farm runs on PRODUCTION time, not the wall clock.** It starts six
+   production days before the delivery date and advances ten production
+   minutes every five real seconds. Anything measuring the delivery window
+   with `datetime.now()` reads a different clock: on 6 September that returned
+   587 hours, enough that a farm crippled to a third of its throughput still
+   "delivered early" and priced at zero exposure. The farm publishes
+   `farm_seconds_to_delivery`; read that.
+
+9. **The war room draws its report panel from COSTING and WRITE_BACK events**,
+   not from tool calls. Only the scripted stand-in emitted them at first, so
+   real runs produced journals the UI could not fully draw. `agent/runtime.py`
+   now emits both from the tool callbacks.
+
+10. **A turn cap that binds in normal operation severs the agent's answer.** An
+    agent only writes its summary once it stops calling tools, and a tool call
+    costs two journal events, so a cap set near 2x the expected query count
+    fires the turn before the summary. `MAX_TURNS_PER_AGENT` is a runaway
+    catcher, not a working limit.
+
 ## Rules that shaped the design
 
 - **No model computes a number.** `agent/economics.py` does the maths and
