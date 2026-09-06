@@ -172,6 +172,18 @@ class FarmTelemetry:
             callbacks=[self._observe_frames_per_hour],
             description="Farm-wide throughput, the number the delivery date depends on",
         )
+        # The farm runs on PRODUCTION time, which is anchored six days before
+        # the delivery date and advances far faster than the wall clock. Any
+        # consumer that measured the delivery window with datetime.now()
+        # instead would be reading a different clock entirely, and on a day far
+        # from 30 September it gets hundreds of hours that do not exist. So the
+        # farm publishes its own distance to the deadline.
+        meter.create_observable_gauge(
+            "farm_seconds_to_delivery",
+            callbacks=[self._observe_seconds_to_delivery],
+            description="Production seconds remaining before the delivery date",
+            unit="s",
+        )
 
     def _start_traces(self) -> None:
         self._tracer_provider = TracerProvider(resource=self._resource)
@@ -232,6 +244,11 @@ class FarmTelemetry:
 
     def _observe_queue_depth(self, options: CallbackOptions) -> Iterable[Observation]:
         yield Observation(self.farm.summary().queue_depth, {})
+
+    def _observe_seconds_to_delivery(
+        self, options: CallbackOptions
+    ) -> Iterable[Observation]:
+        yield Observation(self.farm.summary().seconds_to_delivery, {})
 
     def _observe_shots_at_risk(self, options: CallbackOptions) -> Iterable[Observation]:
         yield Observation(self.farm.summary().shots_at_risk, {})

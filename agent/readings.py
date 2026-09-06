@@ -88,10 +88,12 @@ def _instant(c: httpx.Client, expr: str, default: float | None = None) -> float:
 
 
 def read_farm(delivery_date: datetime | None = None) -> FarmReading:
-    """Snapshot the farm's delivery position from live telemetry."""
-    delivery = delivery_date or datetime.fromisoformat(
-        os.environ.get("SHOT_CLOCK_DELIVERY_DATE", "2026-09-30") + "T23:59:00"
-    )
+    """Snapshot the farm's delivery position from live telemetry.
+
+    Args:
+        delivery_date: overrides the deadline for tests. Left unset in
+            production, where the window comes from the farm's own clock.
+    """
     with _client() as c:
         frames_rendered = int(_instant(c, "sum(last_over_time(shot_frames_completed_total[1h]))"))
         now_rate = _instant(c, "last_over_time(farm_frames_per_hour[1h])")
@@ -109,16 +111,35 @@ def read_farm(delivery_date: datetime | None = None) -> FarmReading:
         degraded = int(
             _instant(c, 'count(last_over_time(node_memory_bytes{health!="healthy"}[1h]))', 0.0)
         )
+        # The farm's OWN distance to the deadline, in production time.
+        #
+        # This used to be (delivery_date - datetime.now()), which is a
+        # different clock. The farm starts six production days out and runs at
+        # roughly two production hours per real second, so on any real day that
+        # is not the eve of delivery the wall clock hands back hundreds of
+        # hours the production does not have: 587 of them today, enough that a
+        # farm crippled to 400 frames an hour still "delivers" comfortably
+        # early and the exposure prices at zero.
+        #
+        # This is the disagreement noted above, and it resolves the other way
+        # round from how it was first read: the farm's gauge reporting 908
+        # shots late was right, and the model reporting 111 hours early was
+        # reading a clock the production does not run on.
+        seconds_left = _instant(c, "last_over_time(farm_seconds_to_delivery[1h])")
 
-    now = datetime.now()
-    # If the clock has already passed the nominal delivery date, price against
-    # the next one rather than reporting a negative window.
-    while delivery <= now:
-        delivery += timedelta(days=1)
+    # The deadline is a fact about the production, so it keeps the film's date.
+    # "Now" is the farm's position in production time, derived by walking back
+    # from that date by the window the farm itself reports. Their difference is
+    # then the real production window, and every downstream figure -- the slip,
+    # the projected finish -- lands on the same clock the war room displays.
+    delivery = delivery_date or datetime.fromisoformat(
+        os.environ.get("SHOT_CLOCK_DELIVERY_DATE", "2026-09-30") + "T23:59:00"
+    )
+    hours_left = max(seconds_left / 3600.0, 0.0)
+    now = delivery - timedelta(hours=hours_left)
 
     # How many shots cannot finish before the date at the current rate.
     frames_remaining = max(FRAMES_TOTAL - frames_rendered, 0)
-    hours_left = max((delivery - now).total_seconds() / 3600.0, 0.0)
     deliverable = max(now_rate, 1.0) * hours_left
     shortfall = max(frames_remaining - deliverable, 0.0)
     frames_per_shot = FRAMES_TOTAL / SHOTS_TOTAL
