@@ -177,11 +177,34 @@ def make_tool_callbacks(jnl: J.Journal, actor: str):
     return before, after
 
 
+def make_model_callback(model_name: str | None):
+    """Count one free-tier request per actual model call.
+
+    The quota being rationed is requests, and ADK fires this exactly once per
+    request. Counting runner events instead -- which is what this used to do --
+    inflated the figure by roughly 1.8x, because a single request also yields
+    the tool call it asks for and the result that comes back. The ledger then
+    declared models spent while they were still answering, and `model_for()`
+    rotated away from perfectly usable ones. Measured against the live API:
+    three models the ledger called exhausted all returned normally.
+    """
+
+    def before_model(callback_context, llm_request):  # noqa: ANN001 - ADK shape
+        if model_name:
+            record_use(model_name, 1)
+        return None  # returning content here would skip the model call
+
+    return before_model
+
+
 def attach_journal(agent: LlmAgent, jnl: J.Journal, actor: str) -> LlmAgent:
-    """Wire journaling callbacks onto an already-built agent."""
+    """Wire journaling and quota-accounting callbacks onto a built agent."""
     before, after = make_tool_callbacks(jnl, actor)
     agent.before_tool_callback = before
     agent.after_tool_callback = after
+    agent.before_model_callback = make_model_callback(
+        getattr(getattr(agent, "model", None), "model", None)
+    )
     return agent
 
 
@@ -201,11 +224,9 @@ async def run_agent(
 
     jnl.record(J.AGENT_START, actor, prompt=prompt)
 
-    # The daily quota meters model requests, not agent runs. Each tool round
-    # trip is another request, so a single investigation can be 15 of them --
-    # counting once per agent undercounts by an order of magnitude and makes
-    # rotation useless.
-    model_name = getattr(getattr(agent, "model", None), "model", None)
+    # The daily quota meters model requests, not agent runs: each tool round
+    # trip is another request, so a single investigation can be fifteen of
+    # them. attach_journal wires the per-request counter that records them.
     turns = 0
 
     final = ""
@@ -215,11 +236,8 @@ async def run_agent(
         new_message=types.Content(role="user", parts=[types.Part(text=prompt)]),
     ):
         turns += 1
-        # Recorded per turn, not at the end: a run that dies on a 429 has still
-        # spent every call it made, and accounting for it only on success left
-        # the ledger believing an exhausted model was fresh.
-        if model_name:
-            record_use(model_name, 1)
+        # Quota is NOT counted here. A runner event is not a model request --
+        # see make_model_callback, which ADK fires once per actual request.
         text = _event_text(event)
         if text:
             # Intermediate narration is the agent thinking out loud between
