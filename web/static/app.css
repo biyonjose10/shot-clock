@@ -710,8 +710,32 @@ button { font: inherit; color: inherit; }
   border: 1px solid var(--warm, #e8a33d); color: var(--warm, #e8a33d);
   padding: 1px 6px; margin-left: 8px; vertical-align: 2px; }
 
-/* The film title was truncating on narrower screens; let it use the space. */
-.slate__film h1 { white-space: nowrap; }
+/* The film title was truncating on narrower screens. The cause is the slate
+   grid: four columns and 32px gaps leave the title column at its 280px floor
+   around 1600px, and the wordmark eats 90px of that. So reclaim the space in
+   the layout rather than only shrinking the type. */
 @media (max-width: 1680px) {
-  .slate__film h1 { font-size: clamp(18px, 1.5vw, 26px); }
+  /* Give the title column its content width and make the vitals strip the one
+     that yields: six stat chips at a 26px gap were spending 130px on gaps
+     alone while the film title sat clipped at 115px. */
+  .slate { gap: 18px; grid-template-columns: auto auto minmax(0, 1fr) auto; }
+  .slate__id { gap: 14px; }
+  .slate__film h1 { font-size: 22px; }
+  .vitals { gap: 11px; padding-left: 16px; min-width: 0; }
+  .vital .eyebrow { letter-spacing: 0.13em; }
+  .slate__actions { gap: 10px; }
+  .slate__actions .btn { padding: 10px 12px; letter-spacing: 0.1em; }
+}
+@media (max-width: 1460px) {
+  .slate { gap: 14px; padding-inline: 16px; }
+  .slate__id { gap: 11px; }
+  .wordmark { font-size: 13px; letter-spacing: 0.2em; padding: 8px 9px 7px; }
+  .slate__film h1 { font-size: 19px; letter-spacing: 0.03em; }
+  .countdown { font-size: 26px; }
+  .vitals { gap: 11px; padding-left: 14px; }
+  .slate__actions .btn { padding: 9px 10px; font-size: 10.5px; }
+}
+@media (max-width: 1240px) {
+  .slate__film .eyebrow { display: none; }
+  .slate__film h1 { font-size: 18px; }
 }
