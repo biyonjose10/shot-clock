@@ -7,6 +7,7 @@ agent genuinely called Grafana rather than describing what it would call.
 """
 from __future__ import annotations
 
+import json
 import time
 from typing import Any
 
@@ -35,13 +36,86 @@ MAX_RESULT_CHARS = 1200
 #: which is both recoverable and better television: the trace panel shows a
 #: focused investigation instead of a dozen duplicate queries.
 #:
-#: Counted in ADK events, which is what the ledger counts too -- not model
-#: requests. Measured on the run that died: 25 tool calls produced 52 events
-#: and 46 ledger units against a real limit of 20 requests, so roughly two
-#: events per tool call. Twenty events is about eleven tool calls, which left
-#: real margin under the cap and is as much investigation as the trace panel
-#: can show in the twenty seconds the narration gives each agent.
-MAX_TURNS_PER_AGENT = 20
+#: Counted in ADK events, not model requests: a tool call logs both the call
+#: and its result, so an agent doing N queries spends about 2N events and then
+#: one more to write its answer.
+#:
+#: That arithmetic is why this is a safety net rather than a working limit. Set
+#: to 20 it fired at exactly ten queries -- the turn before Scout summarised --
+#: so the stage handed the Gaffer this cap notice instead of a briefing. An
+#: agent only writes its answer when it stops calling tools, so a cap that
+#: binds in normal operation always severs the conclusion. With re-reads no
+#: longer wasted, Scout needs roughly 22 events; 30 leaves it room to finish
+#: and still catches the runaway that started this (52 events, quota gone).
+MAX_TURNS_PER_AGENT = 30
+
+
+#: Grafana writes the war room renders as their own beat, mapped to the
+#: `resource` label the UI prints. The trace row alone is not enough: the
+#: report panel builds its incident and annotation rows from WRITE_BACK, and
+#: its cost tiles from COSTING. Only the scripted stand-in ever emitted those,
+#: so a genuine crew run produced a journal the UI could not fully draw --
+#: the Producer priced the delay and the First AD opened a real incident, and
+#: neither reached the screen.
+WRITE_TOOLS: dict[str, str] = {
+    "create_incident": "incident",
+    "add_activity_to_incident": "incident activity",
+    "create_annotation": "annotation",
+    "update_dashboard": "dashboard",
+    "create_snapshot": "snapshot",
+    "generate_deeplink": "deeplink",
+}
+
+#: The deterministic costing tool. Its result is the Producer's whole output.
+COSTING_TOOL = "price_delivery_risk"
+
+
+def _mcp_payload(response: Any) -> dict | str | None:
+    """Best effort at the useful part of an MCP tool response.
+
+    Returns a parsed object when the tool answered with JSON, the raw string
+    when it answered with text (``generate_deeplink`` returns a bare URL), or
+    None. Never raises: a malformed response must not take down a run.
+    """
+    try:
+        content = response.get("content") if isinstance(response, dict) else None
+        if not content:
+            return response if isinstance(response, dict) else None
+        text = content[0].get("text") if isinstance(content[0], dict) else None
+        if not isinstance(text, str):
+            return None
+        stripped = text.strip()
+        if stripped.startswith("{") or stripped.startswith("["):
+            return json.loads(stripped)
+        return stripped
+    except Exception:  # noqa: BLE001 - observation must never break the run
+        return None
+
+
+def _write_back_payload(tool_name: str, args: dict, response: Any) -> dict:
+    """Describe one Grafana write in the shape the report panel reads."""
+    out: dict[str, Any] = {
+        "resource": WRITE_TOOLS[tool_name],
+        "target": WRITE_TOOLS[tool_name],
+        "title": (args or {}).get("title") or (args or {}).get("text") or "",
+    }
+    parsed = _mcp_payload(response)
+    if isinstance(parsed, str) and parsed.startswith("http"):
+        out["url"] = parsed
+    elif isinstance(parsed, dict):
+        ident = (
+            parsed.get("incidentID")
+            or parsed.get("activityItemID")
+            or (parsed.get("Payload") or {}).get("id")
+            or parsed.get("id")
+        )
+        if ident is not None:
+            out["id"] = str(ident)
+        for key in ("url", "URL", "snapshotUrl"):
+            if isinstance(parsed.get(key), str):
+                out["url"] = parsed[key]
+                break
+    return out
 
 
 def _excerpt(value: Any) -> str:
@@ -76,6 +150,28 @@ def make_tool_callbacks(jnl: J.Journal, actor: str):
             latency_ms=elapsed_ms,
             result=_excerpt(tool_response),
         )
+
+        # Some results are beats in their own right, not just trace lines.
+        try:
+            if tool.name == COSTING_TOOL and isinstance(tool_response, dict):
+                read = tool_response.get("read_from_grafana") or {}
+                jnl.record(
+                    J.COSTING,
+                    actor,
+                    headline=tool_response.get("headline", ""),
+                    lines=tool_response.get("tiles") or [],
+                    shots_at_risk=read.get("shots_at_risk"),
+                    delay_hours=tool_response.get("slip_hours"),
+                    cost_usd=tool_response.get("total_exposure"),
+                )
+            elif tool.name in WRITE_TOOLS:
+                jnl.record(
+                    J.WRITE_BACK,
+                    actor,
+                    **_write_back_payload(tool.name, args, tool_response),
+                )
+        except Exception:  # noqa: BLE001 - never let observation break a run
+            pass
         return None
 
     return before, after
@@ -131,6 +227,10 @@ async def run_agent(
             jnl.record(J.AGENT_THOUGHT, actor, text=text)
             final = text
         if turns >= MAX_TURNS_PER_AGENT:
+            # Journalled, but deliberately NOT assigned to `final`: the next
+            # agent is handed this stage's conclusions, and overwriting them
+            # with a notice about the budget is how the Gaffer once received
+            # "Reached the 20-turn budget" as the Scout's entire report.
             jnl.record(
                 J.AGENT_THOUGHT,
                 actor,
@@ -140,6 +240,12 @@ async def run_agent(
                 ),
             )
             break
+
+    if not final:
+        final = (
+            f"{actor} stopped at its turn budget before writing a summary. "
+            f"Its tool calls and their results are in the journal above."
+        )
 
     return final
 
