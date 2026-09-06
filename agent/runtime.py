@@ -25,6 +25,24 @@ USER_ID = "supervisor"
 #: The journal keeps a readable excerpt; the model still sees the whole thing.
 MAX_RESULT_CHARS = 1200
 
+#: Hard ceiling on model turns per agent.
+#:
+#: The free quota is 20 requests per day per model, and an agent that wanders
+#: spends the whole of one: a Scout run once made 25 tool calls, ten of them
+#: re-reads of metrics it had already queried, exhausted its model and never
+#: reached its own briefing -- so nothing downstream ran and nothing was
+#: checkpointed. A cap turns "the day is gone" into "hand over what you have",
+#: which is both recoverable and better television: the trace panel shows a
+#: focused investigation instead of a dozen duplicate queries.
+#:
+#: Counted in ADK events, which is what the ledger counts too -- not model
+#: requests. Measured on the run that died: 25 tool calls produced 52 events
+#: and 46 ledger units against a real limit of 20 requests, so roughly two
+#: events per tool call. Twenty events is about eleven tool calls, which left
+#: real margin under the cap and is as much investigation as the trace panel
+#: can show in the twenty seconds the narration gives each agent.
+MAX_TURNS_PER_AGENT = 20
+
 
 def _excerpt(value: Any) -> str:
     text = str(value)
@@ -107,12 +125,21 @@ async def run_agent(
         if model_name:
             record_use(model_name, 1)
         text = _event_text(event)
-        if not text:
-            continue
-        # Intermediate narration is the agent thinking out loud between tool
-        # calls; the last one is its answer.
-        jnl.record(J.AGENT_THOUGHT, actor, text=text)
-        final = text
+        if text:
+            # Intermediate narration is the agent thinking out loud between
+            # tool calls; the last one is its answer.
+            jnl.record(J.AGENT_THOUGHT, actor, text=text)
+            final = text
+        if turns >= MAX_TURNS_PER_AGENT:
+            jnl.record(
+                J.AGENT_THOUGHT,
+                actor,
+                text=(
+                    f"Reached the {MAX_TURNS_PER_AGENT}-turn budget. Handing "
+                    f"over on what has been read so far."
+                ),
+            )
+            break
 
     return final
 

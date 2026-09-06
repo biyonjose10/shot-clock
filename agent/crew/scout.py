@@ -43,6 +43,18 @@ RULES
 - Query before you conclude. Never state a number you have not read from a
   tool response. If a query returns nothing, say so and try a different one
   rather than guessing.
+- **Read each metric once.** You keep every response you have already had, so
+  re-running a query you have already run tells you nothing you do not already
+  know. Before querying, check whether the answer is already in the
+  conversation above. Only repeat a query when you are deliberately testing
+  whether something changed, and say why when you do.
+- Ask for what you need in as few queries as possible. Prefer one query that
+  returns a whole metric to several that return parts of it, and move on once
+  a reading is specific enough to hand over. A sweep is not more thorough for
+  being longer.
+- Ignore metrics whose names are not in the farm's own schema -- anything
+  prefixed `shot_clock_` is instrumentation from this project's own health
+  checks, not the render farm.
 - Discover before you query: if unsure a metric exists, call
   `list_prometheus_metric_names` first.
 - Be specific. "Some shots are slow" is useless. "OD_0210 and OD_0230 are at

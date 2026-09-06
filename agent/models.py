@@ -133,20 +133,40 @@ def budget_report() -> str:
     return "\n".join(lines)
 
 
+#: The crew in the order they run. Used to deal models out, so that when one
+#: is spent everyone shifts down the pool together instead of colliding.
+CREW_ROLE_ORDER: list[str] = ["scout", "gaffer", "producer", "first_ad"]
+
+
 def model_for(role: str) -> str:
-    """The model for this role, skipping any believed exhausted today."""
+    """The model for this role, skipping any believed exhausted today.
+
+    Roles are dealt distinct models rather than each falling back on its own.
+    Falling back independently put Scout and Gaffer on the same model the
+    moment Scout's preferred one was spent -- two agents sharing one 20-request
+    budget, which is the failure the rotation exists to prevent.
+    """
     if on_vertex():
         # Vertex bills per call rather than rationing per day, so there is no
         # quota to rotate around -- and the 3.x ids the rotation uses do not
         # exist there at all.
         return CREW_MODEL
-    preferred = os.environ.get("SHOT_CLOCK_CREW_MODEL") or ROLE_MODELS.get(role)
+    override = os.environ.get("SHOT_CLOCK_CREW_MODEL")
+    if override:
+        return override
+
     used = usage_today()
+    available = [m for m in MODEL_POOL if used.get(m, 0) < DAILY_BUDGET]
+    if role in CREW_ROLE_ORDER and available:
+        return available[CREW_ROLE_ORDER.index(role) % len(available)]
+
+    # Roles outside the crew rotation -- the vision check, which spends one
+    # call -- keep their own preference while it still has budget.
+    preferred = ROLE_MODELS.get(role)
     if preferred and used.get(preferred, 0) < DAILY_BUDGET:
         return preferred
-    for candidate in MODEL_POOL:
-        if used.get(candidate, 0) < DAILY_BUDGET:
-            return candidate
+    if available:
+        return available[0]
     # Everything is spent. Return the preferred one so the failure is a clear
     # 429 naming the model, rather than a confusing silent fallback.
     return preferred or MODEL_POOL[0]
