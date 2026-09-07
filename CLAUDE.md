@@ -75,6 +75,18 @@ scripts/list_mcp_tools.py    enumerate MCP tools from the running binary
     fires the turn before the summary. `MAX_TURNS_PER_AGENT` is a runaway
     catcher, not a working limit.
 
+11. **Switching faults needs a telemetry cooldown, not a sim restart.** The
+    agents query a one-hour window and the healthy baseline uses six hours, so
+    a fault injected four minutes ago is read alongside the previous one.
+    Restarting the simulator with `licence-starvation` while a
+    `texture-cache-miss` run was still inside the window produced
+    `texture_cache_hit_ratio` at 0.31 (old) next to `licence_pool_available` at
+    0 and `queue_depth` at 35 (new), and the Gaffer synthesised them into a
+    coherent, wrong answer: cache collapse as the cause, licence exhaustion as
+    a downstream symptom. That is good reasoning over bad inputs, not a bad
+    agent. Wait for the old fault to age out before recording a second
+    scenario, or accept that the run proves nothing.
+
 ## Rules that shaped the design
 
 - **No model computes a number.** `agent/economics.py` does the maths and
