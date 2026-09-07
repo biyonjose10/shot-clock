@@ -232,3 +232,34 @@ def test_a_spent_production_restarts_instead_of_emptying_the_board():
     assert summary.seconds_to_delivery > 0, "a recycled farm needs calendar left"
     assert summary.frames_rendered < summary.frames_total, "and work left to do"
     assert sum(board["in_flight_counts"].values()) > 0, "and shots on the board"
+
+
+# --- the only control that spends money -------------------------------------
+
+def test_live_run_enforces_its_daily_allowance(tmp_path, monkeypatch):
+    from agent import live_run as lr
+
+    monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
+    assert lr.remaining() == lr.DAILY_LIMIT
+    for _ in range(lr.DAILY_LIMIT):
+        lr._spend()
+    assert lr.remaining() == 0
+    with pytest.raises(lr.Spent):
+        lr._spend()
+    assert "used up" in (lr.blocked_reason() or "")
+
+
+def test_live_run_allows_only_one_at_a_time(tmp_path, monkeypatch):
+    """A crew run is minutes long; four at once multiply the bill and prove
+    nothing the first does not."""
+    from agent import live_run as lr
+
+    monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
+    assert lr.available()
+    assert lr._slot.acquire(blocking=False)
+    try:
+        assert not lr.available()
+        assert "already in progress" in (lr.blocked_reason() or "")
+    finally:
+        lr._slot.release()
+    assert lr.available()

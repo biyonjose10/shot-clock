@@ -596,6 +596,71 @@ async def demo(request: Request) -> JSONResponse:
     )
 
 
+def _live_runs_left() -> int:
+    """Live crew runs still allowed today, or 0 if the agent stack is absent."""
+    try:
+        from agent import live_run as lr
+
+        return lr.remaining()
+    except Exception:  # noqa: BLE001 - a deployment without agents is fine
+        return 0
+
+
+@app.post("/api/live-run")
+async def live_run(request: Request) -> JSONResponse:
+    """Start a real crew run into this viewer's journal.
+
+    Everything else here is a replay, which is the right default. This exists
+    because the honest objection to an observability-agent demo is "is this
+    actually running, or a recording?", and the only answer that settles it is
+    to run the thing while somebody watches.
+
+    Capped per day and to one at a time; see agent/live_run.py. The task is
+    fire-and-forget because a crew run takes minutes and the caller should not
+    hold a request open for it -- the events arrive on /api/events like any
+    other run.
+    """
+    from agent import live_run as lr
+
+    body: dict[str, Any] = {}
+    with contextlib.suppress(Exception):
+        body = await request.json()
+    viewer = CONSOLE.viewer(body.get("sid") or request.query_params.get("sid"))
+
+    reason = lr.blocked_reason()
+    if reason:
+        return JSONResponse(
+            {"ok": False, "started": False, "reason": reason,
+             "remaining": lr.remaining()},
+            status_code=200,
+        )
+
+    # Replace whatever this viewer was watching, so a live run is not
+    # interleaved with a replay in the same journal.
+    if viewer.demo_task is not None and not viewer.demo_task.done():
+        viewer.demo_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await viewer.demo_task
+
+    async def go() -> None:
+        try:
+            await lr.start(viewer.journal)
+        except Exception as exc:  # noqa: BLE001 - reported into the journal
+            log.exception("live crew run failed")
+            viewer.journal.record(
+                journal_mod.AGENT_THOUGHT,
+                "system",
+                text=f"The live run stopped: {exc}. The recorded replay still works.",
+            )
+            viewer.journal.record(journal_mod.RUN_END, "system")
+
+    viewer.demo_source = "live crew run"
+    viewer.demo_task = asyncio.create_task(go())
+    return JSONResponse(
+        {"ok": True, "started": True, "live": True, "remaining": lr.remaining()}
+    )
+
+
 @app.get("/api/status")
 async def status(request: Request) -> JSONResponse:
     """Small health/mode probe, handy when checking a deployment."""
@@ -609,6 +674,7 @@ async def status(request: Request) -> JSONResponse:
             "viewers": len(CONSOLE.viewers),
             "demo_running": running,
             "demo_source": viewer.demo_source,
+            "live_runs_left": _live_runs_left(),
             "sim_time": CONSOLE.board.get("sim_time"),
         }
     )

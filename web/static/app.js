@@ -588,6 +588,10 @@
       $("trace-note").textContent = "run complete";
       $("demo-btn").disabled = false;
       $("demo-btn").textContent = "Run demo";
+      if ($("live-btn")) {
+        $("live-btn").disabled = false;
+        $("live-btn").textContent = "Run the crew live";
+      }
       // Nothing further will arrive; stop paying to listen for it.
       disconnect("run complete");
     }
@@ -880,6 +884,46 @@
     }
 
     $("demo-btn").addEventListener("click", startDemo);
+
+    /* The replay proves what the agents produced; this proves they are still
+       running. It is the only answer to "is this a recording?" that settles
+       the question, so it is worth a button even though it is capped. */
+    $("live-btn").addEventListener("click", function () {
+      var btn = $("live-btn");
+      btn.disabled = true;
+      btn.textContent = "Starting the crew";
+      connect();
+      fetch("/api/live-run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sid: SID })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (info) {
+          if (!info.started) {
+            $("trace-note").textContent = info.reason || "live run unavailable";
+            btn.textContent = "Run the crew live";
+            btn.disabled = false;
+            return;
+          }
+          $("trace-note").textContent =
+            "live crew run — this is happening now, not a replay";
+          btn.textContent = "Crew running";
+          $("demo-btn").disabled = true;
+        })
+        .catch(function () {
+          btn.textContent = "Run the crew live";
+          btn.disabled = false;
+        });
+    });
+
+    /* Hide the button rather than offer something that cannot happen. */
+    fetch("/api/status?sid=" + encodeURIComponent(SID))
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        if (!s.live_runs_left) $("live-btn").hidden = true;
+      })
+      .catch(function () { $("live-btn").hidden = true; });
 
     pollBoard();
     setInterval(pollBoard, BOARD_POLL_MS);

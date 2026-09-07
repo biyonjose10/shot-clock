@@ -753,3 +753,12 @@ button { font: inherit; color: inherit; }
 .wf__val { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); text-align: right;
   font-variant-numeric: tabular-nums; }
 .ev--trace .tool__verb { color: var(--tungsten); }
+
+/* The live-run button is the only control that spends money, so it reads as
+   the deliberate choice it is rather than sitting flush with the replay. */
+.btn--live {
+  border-color: var(--tungsten);
+  color: var(--tungsten);
+}
+.btn--live:hover:not(:disabled) { background: var(--tungsten); color: var(--ink-000); }
+.btn--live:disabled { opacity: .55; }
