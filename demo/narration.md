@@ -1,8 +1,10 @@
 # Shot Clock — 3-minute trailer
 
-Word-for-word narration, timed to DEMO MODE. Generated with Gemini TTS; the
-score is Lyria. Nothing is recorded by hand and nothing is edited — the run is
-one continuous screen capture, and the captions are rendered by the UI itself.
+Word-for-word narration, timed to DEMO MODE and generated with Gemini TTS.
+There is no music: a calm voice over a live dashboard does not need a score,
+and an ungenerated one would have been the only hand-made thing in the film.
+Nothing is edited — the run is one continuous screen capture, and the captions
+are rendered by the UI itself.
 
 **Total: ~2:40 spoken.** Verified with `python -m demo.voiceover --dry-run`,
 which counts the words that will actually be read. The 3:00 limit is a
@@ -45,7 +47,7 @@ Grafana panel showing live series. Caption card: "real metrics, logs and traces
 
 ## 0:35 – 0:55 · Scout
 
-> At four minutes past midnight, the farm changes. Scout notices.
+> Then the farm changes. Scout notices.
 >
 > It is a Gemini agent, reading the same Grafana a human would, through the
 > Grafana MCP server. It compares each shot against its own history.
@@ -83,8 +85,8 @@ real PromQL, responses coming back.*
 > So Shot Clock looks at it.
 >
 > Gemini inspects the plate and finds fireflies — blown-out pixels from indirect
-> light that never converged. Across the geometry, and across the road, where
-> stars could not be.
+> light that never converged. Scattered across the building geometry, ninety-five
+> percent confident.
 >
 > The render did not fail. The image did. No metric would have caught it, and
 > every visual effects house pays people to catch it by eye.
@@ -100,8 +102,8 @@ hold for a full two seconds before the verdict lands.**
 
 *On screen: the costing tiles resolving.*
 
-> Throughput down fifty-eight percent. Thirty-one hours past delivery. A hundred
-> and forty-three thousand dollars of exposure.
+> Throughput down seventy-nine percent. Four hundred and twelve hours past
+> delivery. Two hundred and sixty-six thousand dollars of exposure.
 >
 > No model calculated those. Ask a language model for a cost and it invents a
 > different one every time. The maths is Python, and it checks its own figures

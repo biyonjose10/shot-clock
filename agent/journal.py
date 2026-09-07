@@ -162,8 +162,76 @@ def latest(pattern: str = "*.jsonl") -> Path | None:
     return candidates[0] if candidates else None
 
 
+#: Seconds each section of the recorded take should occupy on screen, keyed by
+#: the crew member whose caption opens it. These are the narration's beats.
+#:
+#: A real investigation does not pace itself for an audience. This run spent 66
+#: seconds in the Scout -- a third of the whole take watching queries scroll --
+#: and reached the tech check, the beat the film exists for, with 13 seconds
+#: left for it. Re-pacing fixes that WITHOUT touching the record: not one event
+#: is added, removed, reordered or edited, and every number on screen is the
+#: one the agent read. Only the rate of playback changes, which `speed` and
+#: `max_gap` were already doing.
+DEMO_SECTION_SECONDS: dict[str, float] = {
+    "scout": 20.0,
+    "gaffer": 25.0,
+    "vision": 30.0,
+    "producer": 25.0,
+    "first_ad": 25.0,
+}
+
+
+#: Seconds of stillness to leave AFTER a section's last event, before the next
+#: section opens. The tech check needs it: the verdict arrives when Gemini
+#: answers, which is the last thing that happens in that section, so scaling
+#: alone put the frame on screen one second before the Producer wiped it. The
+#: narration asks to hold on the plate, and this is that hold.
+SECTION_HOLD_SECONDS: dict[str, float] = {"vision": 14.0}
+
+
+def direct(
+    events: list[Event], sections: dict[str, float] | None = None
+) -> list[Event]:
+    """Re-pace a run to the narration's beats, keeping every event intact.
+
+    Sections are delimited by caption events, and each is stretched or
+    compressed onto its target duration by scaling the offsets inside it,
+    less any hold reserved for stillness at the end. Order is preserved and
+    content is untouched.
+    """
+    sections = sections or DEMO_SECTION_SECONDS
+    if not events:
+        return events
+    marks = [i for i, e in enumerate(events) if e.kind == CAPTION]
+    if not marks:
+        return events
+
+    out = [Event(e.kind, e.actor, e.offset, dict(e.payload), e.seq) for e in events]
+    cursor = 0.0
+    for n, start in enumerate(marks):
+        end = marks[n + 1] if n + 1 < len(marks) else len(out)
+        actor = out[start].actor
+        span_start = out[start].offset
+        span_end = out[end].offset if end < len(out) else out[-1].offset
+        actual = max(span_end - span_start, 0.0)
+        target = sections.get(actor, actual)
+        hold = min(SECTION_HOLD_SECONDS.get(actor, 0.0), max(target - 1.0, 0.0))
+        playable = max(target - hold, 0.0)
+        scale = (playable / actual) if actual > 0.01 else 0.0
+        for i in range(start, end):
+            out[i].offset = round(cursor + (out[i].offset - span_start) * scale, 3)
+        cursor += target
+    # Anything before the first caption (run_start) opens the take.
+    for i in range(marks[0]):
+        out[i].offset = 0.0
+    return out
+
+
 async def replay(
-    path: Path, speed: float = 1.0, max_gap: float = 4.0
+    path: Path,
+    speed: float = 1.0,
+    max_gap: float = 4.0,
+    directed: bool = False,
 ) -> AsyncIterator[Event]:
     """Yield a recorded run at its original cadence.
 
@@ -174,8 +242,15 @@ async def replay(
         max_gap: never wait longer than this between events, however long the
             original pause was. A live run may stall on a slow tool call;
             the video cannot.
+        directed: re-pace the sections onto the narration's beats. Raises the
+            gap ceiling, because the point of the stretch is the hold on the
+            rendered frame -- clamping that back to four seconds would undo
+            exactly the beat it exists to create.
     """
     events = read(path)
+    if directed:
+        events = direct(events)
+        max_gap = max(max_gap, 14.0)
     previous = 0.0
     for event in events:
         gap = min((event.offset - previous) / max(speed, 0.01), max_gap)

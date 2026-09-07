@@ -66,7 +66,11 @@ TICK_INTERVAL = 1.0
 WARMUP_SIM_SECONDS = 6 * 3600.0
 
 #: Replay speed for DEMO MODE unless the caller asks for another.
-DEFAULT_DEMO_SPEED = 1.4
+#: 1.0, because the director now sets the pace. The old 1.4 was compensating
+#: for a run that spent a third of itself in the Scout; re-pacing removes the
+#: thing it was compensating for, and any multiplier on top would pull the
+#: beats back off the narration's marks.
+DEFAULT_DEMO_SPEED = 1.0
 
 #: A shot that will land with less than this share of the remaining window to
 #: spare is "at risk": it is still projected to make it, but one retry or one
@@ -126,7 +130,9 @@ class Console:
                 log.exception("farm tick failed")
 
     # -- demo ---------------------------------------------------------------
-    async def replay_into_live(self, path: Path, speed: float) -> None:
+    async def replay_into_live(
+        self, path: Path, speed: float, directed: bool = True
+    ) -> None:
         """Re-record a journal file into the live journal at its own cadence.
 
         Replaying through ``record`` rather than straight to the socket means
@@ -135,7 +141,9 @@ class Console:
         """
         last = ""
         try:
-            async for event in journal_mod.replay(path, speed=speed):
+            async for event in journal_mod.replay(
+                path, speed=speed, directed=directed
+            ):
                 try:
                     self.journal.record(event.kind, event.actor, **safe_payload(event.payload))
                     last = event.kind
@@ -454,6 +462,9 @@ async def demo(request: Request) -> JSONResponse:
         body = await request.json()
 
     speed = float(body.get("speed") or DEFAULT_DEMO_SPEED)
+    # Directed by default: the sections are re-paced onto the narration's
+    # beats. Pass {"directed": false} to watch a run at the rate it happened.
+    directed = bool(body.get("directed", True))
     path, synthetic = _demo_journal(body.get("path"))
 
     if CONSOLE.demo_task is not None and not CONSOLE.demo_task.done():
@@ -462,7 +473,9 @@ async def demo(request: Request) -> JSONResponse:
             await CONSOLE.demo_task
 
     CONSOLE.demo_source = str(path)
-    CONSOLE.demo_task = asyncio.create_task(CONSOLE.replay_into_live(path, speed))
+    CONSOLE.demo_task = asyncio.create_task(
+        CONSOLE.replay_into_live(path, speed, directed)
+    )
     return JSONResponse(
         {
             "mode": "demo",
