@@ -1,0 +1,119 @@
+1
+00:00:00,000 --> 00:00:06,713
+A visual effects studio has twelve hundred shots and a delivery date that does not move.
+
+2
+00:00:06,713 --> 00:00:11,595
+Their render farm is two hundred machines running for six weeks.
+
+3
+00:00:11,595 --> 00:00:17,851
+When it goes wrong, nobody finds out until the shots are late. This is Shot Clock.
+
+4
+00:00:19,000 --> 00:00:22,189
+Then the farm changes. Scout notices.
+
+5
+00:00:22,189 --> 00:00:30,206
+It is a Gemini agent, reading the same Grafana a human would, through the Grafana MCP server.
+
+6
+00:00:30,206 --> 00:00:34,171
+It compares each shot against its own history.
+
+7
+00:00:35,000 --> 00:00:41,494
+The Gaffer proves the cause. Metrics say which shot is hurting, but not which node —
+
+8
+00:00:41,494 --> 00:00:46,750
+that label would cost eight thousand series. So it goes to the logs.
+
+9
+00:00:46,750 --> 00:00:48,605
+Texture cache collapse —
+
+10
+00:00:48,605 --> 00:00:54,944
+not licence starvation, the pools are full, and not a memory leak, memory is flat.
+
+11
+00:00:54,944 --> 00:00:59,583
+Then the trace — the only signal that sees inside one frame.
+
+12
+00:00:59,583 --> 00:01:04,453
+Texture fetch ate two thirds of it, the only span marked error.
+
+13
+00:01:04,453 --> 00:01:09,091
+It says what it ruled out. That is a diagnosis, not a guess.
+
+14
+00:01:10,000 --> 00:01:16,402
+Then Shot Clock does something telemetry cannot. This frame rendered successfully.
+
+15
+00:01:16,402 --> 00:01:22,726
+Exit code zero, normal duration, every metric healthy. So Shot Clock looks at it.
+
+16
+00:01:22,726 --> 00:01:24,600
+Gemini finds fireflies —
+
+17
+00:01:24,600 --> 00:01:32,252
+blown-out pixels from indirect light that never converged, scattered across the building geometry.
+
+18
+00:01:32,252 --> 00:01:37,014
+Ninety-five percent. The render did not fail. The image did —
+
+19
+00:01:37,014 --> 00:01:42,011
+and every visual effects house pays people to catch that by eye.
+
+20
+00:01:43,000 --> 00:01:47,465
+The Producer turns that into the numbers a studio acts on.
+
+21
+00:01:47,465 --> 00:01:57,781
+Throughput down seventy-nine percent, delivery four hundred and four hours late, exposure three hundred and thirteen thousand dollars.
+
+22
+00:01:57,781 --> 00:01:59,860
+No model calculated those —
+
+23
+00:01:59,860 --> 00:02:05,018
+ask a language model for a cost and it invents a new one each time.
+
+24
+00:02:05,018 --> 00:02:08,251
+The maths is Python, and it checks itself.
+
+25
+00:02:09,000 --> 00:02:12,806
+And then the crew stops reading, and acts.
+
+26
+00:02:12,806 --> 00:02:24,224
+The First AD opens an incident, adds the diagnosis to its timeline, and annotates the dashboard at the minute the fault began.
+
+27
+00:02:24,224 --> 00:02:31,746
+Whoever opens that dashboard tomorrow finds the investigation already written down.
+
+28
+00:02:31,746 --> 00:02:35,371
+An agent that works, not one that talks.
+
+29
+00:02:36,000 --> 00:02:46,165
+Shot Clock — Gemini agents on Google Cloud, wired to Grafana.
+
+30
+00:02:46,165 --> 00:02:51,331
+Twelve hundred shots, one date.

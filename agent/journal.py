@@ -180,11 +180,11 @@ def latest(pattern: str = "*.jsonl") -> Path | None:
 #: to the voice is the way round that cannot drift: the voice is fixed audio,
 #: the picture is re-paceable.
 DEMO_SECTION_SECONDS: dict[str, float] = {
-    "scout": 17.0,
-    "gaffer": 26.0,
-    "vision": 34.0,
-    "producer": 26.0,
-    "first_ad": 28.0,
+    "scout": 16.0,     # voice 15.2s
+    "gaffer": 35.0,    # voice 34.1s
+    "vision": 33.0,    # voice 32.0s
+    "producer": 26.0,  # voice 25.3s
+    "first_ad": 27.0,  # voice 26.4s
 }
 
 
