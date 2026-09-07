@@ -180,10 +180,10 @@ def latest(pattern: str = "*.jsonl") -> Path | None:
 #: the picture is re-paceable.
 DEMO_SECTION_SECONDS: dict[str, float] = {
     "scout": 17.0,
-    "gaffer": 30.0,
-    "vision": 33.0,
+    "gaffer": 26.0,
+    "vision": 34.0,
     "producer": 26.0,
-    "first_ad": 29.0,
+    "first_ad": 28.0,
 }
 
 

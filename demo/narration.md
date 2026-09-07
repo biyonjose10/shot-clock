@@ -66,8 +66,8 @@ real PromQL, responses coming back.*
 
 *On screen: `query_loki_logs`, then the returned renderer stderr.*
 
-> Texture cache collapse. Not licence starvation, the pools are full. Not a
-> memory leak, memory is flat.
+> Texture cache collapse — not licence starvation, the pools are full, and not
+> a memory leak, memory is flat.
 >
 > It says what it ruled out. That is a diagnosis, not a guess.
 
@@ -101,11 +101,11 @@ hold for a full two seconds before the verdict lands.**
 
 *On screen: the costing tiles resolving.*
 
-> Throughput down seventy-nine percent. Four hundred and twelve hours past
-> delivery. Two hundred and sixty-six thousand dollars of exposure.
+> Throughput down seventy-nine percent, delivery four hundred and twelve hours
+> late, exposure two hundred and sixty-six thousand dollars.
 >
-> No model calculated those. Ask a language model for a cost and it invents a
-> different one each time. The maths is Python, and it checks itself.
+> No model calculated those — ask a language model for a cost and it invents a
+> new one each time. The maths is Python, and it checks itself.
 
 ---
 
