@@ -455,6 +455,45 @@
       });
     },
 
+    /* The trace is the only signal that can see inside one frame, so it gets a
+       waterfall rather than another line of tool output. Bars are drawn from
+       the share the reader computed, which now sums to 1.0 -- the simulator
+       used to boost texture_fetch without compressing the other stages, and
+       the children outlasted the parent they sat in. */
+    trace_read: function (event) {
+      addRow(event, "ev--trace", function (body, p) {
+        var head = el("div", "tool");
+        head.appendChild(el("span", "tool__verb", "TRACE"));
+        head.appendChild(el("span", "tool__name",
+          (p.shot_id || "frame") +
+          (p.frame != null ? " frame " + String(p.frame).padStart(4, "0") : "") +
+          (p.node ? " on " + p.node : "")));
+        body.appendChild(head);
+
+        var wrap = el("div", "waterfall");
+        (p.spans || []).forEach(function (sp) {
+          var row = el("div", "wf");
+          row.appendChild(el("span", "wf__name", sp.name));
+          var track = el("div", "wf__track");
+          var bar = el("div", "wf__bar" + (sp.errored ? " is-bad" : ""));
+          bar.style.width = Math.max(1, (sp.share || 0) * 100) + "%";
+          track.appendChild(bar);
+          row.appendChild(track);
+          row.appendChild(el("span", "wf__val",
+            (sp.seconds != null ? sp.seconds.toFixed(1) + "s" : "") +
+            " · " + Math.round((sp.share || 0) * 100) + "%"));
+          wrap.appendChild(row);
+        });
+        body.appendChild(wrap);
+
+        var meta = [];
+        if (p.total_seconds != null) meta.push(p.total_seconds.toFixed(1) + "s end to end");
+        if (p.worst_span) meta.push(p.worst_span + " is the only errored span");
+        if (p.trace_id) meta.push("trace " + String(p.trace_id).slice(0, 16));
+        if (meta.length) body.appendChild(el("p", "ev__summary", meta.join(" · ")));
+      });
+    },
+
     vision_verdict: function (event) {
       addRow(event, "ev--vision", function (body, p) {
         var head = el("div", "tool");

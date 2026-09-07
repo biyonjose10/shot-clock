@@ -739,3 +739,17 @@ button { font: inherit; color: inherit; }
   .slate__film .eyebrow { display: none; }
   .slate__film h1 { font-size: 18px; }
 }
+
+/* ------------------------------------------------- trace waterfall -- */
+/* One frame, broken into the stages that consumed it. The errored span is
+   coloured because it is the finding, not decoration: a cold texture cache
+   lands on one stage rather than spreading across the frame. */
+.waterfall { display: grid; gap: 4px; margin-top: 8px; }
+.wf { display: grid; grid-template-columns: 92px 1fr 96px; align-items: center; gap: 10px; }
+.wf__name { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); }
+.wf__track { height: 12px; background: var(--ink-100); border: 1px solid var(--line); }
+.wf__bar { height: 100%; background: var(--text-mute); transition: width .3s ease; }
+.wf__bar.is-bad { background: var(--hot); }
+.wf__val { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); text-align: right;
+  font-variant-numeric: tabular-nums; }
+.ev--trace .tool__verb { color: var(--tungsten); }

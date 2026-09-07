@@ -69,6 +69,11 @@ WRITE_TOOLS: dict[str, str] = {
 #: The deterministic costing tool. Its result is the Producer's whole output.
 COSTING_TOOL = "price_delivery_risk"
 
+#: The trace read. Its span breakdown is a beat in its own right -- it is the
+#: only signal that sees inside a single frame -- so the war room draws it as a
+#: waterfall rather than as one more line of tool output.
+TRACE_TOOL = "read_frame_trace"
+
 
 def _mcp_payload(response: Any) -> dict | str | None:
     """Best effort at the useful part of an MCP tool response.
@@ -163,6 +168,18 @@ def make_tool_callbacks(jnl: J.Journal, actor: str):
                     shots_at_risk=read.get("shots_at_risk"),
                     delay_hours=tool_response.get("slip_hours"),
                     cost_usd=tool_response.get("total_exposure"),
+                )
+            elif tool.name == TRACE_TOOL and isinstance(tool_response, dict):
+                jnl.record(
+                    J.TRACE_READ,
+                    actor,
+                    **{
+                        k: tool_response.get(k)
+                        for k in (
+                            "summary", "trace_id", "shot_id", "node", "frame",
+                            "renderer", "total_seconds", "spans", "worst_span",
+                        )
+                    },
                 )
             elif tool.name in WRITE_TOOLS:
                 jnl.record(

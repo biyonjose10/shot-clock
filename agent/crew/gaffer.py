@@ -17,6 +17,7 @@ from google.adk.agents import LlmAgent
 
 from agent.models import crew_llm
 from agent.mcp import DATASOURCE_BRIEFING, GAFFER_TOOLS, toolset
+from agent.traces import read_frame_trace
 
 INSTRUCTION = f"""
 You are the Gaffer on a VFX render farm. Scout has told you something is wrong.
@@ -46,10 +47,13 @@ Work in this order. Do not skip to a conclusion.
    renderer and artist. Quote the actual line you found.
 4. Optionally use `query_loki_patterns` to see the shape of what is being
    logged, or `find_error_pattern_logs` for elevated error patterns.
-5. If frame stages matter, `find_slow_requests` searches Tempo. Each frame is
-   one trace with sub-spans: scene_load, texture_fetch, render, denoise, write.
-   Which stage absorbed the time is strong evidence -- a cold cache lands on
-   texture_fetch specifically rather than spreading across the frame.
+5. FINISH IN THE TRACES. Call `read_frame_trace` once. Every frame is one
+   trace with sub-spans -- scene_load, texture_fetch, render, denoise, write --
+   and it returns the slowest errored frame with the time each stage absorbed.
+   This is the only signal that can see INSIDE a frame, and the only one
+   carrying the shot and the node together, so it is what turns a correlation
+   into a mechanism: a cold cache lands on texture_fetch specifically rather
+   than spreading across the frame. Quote the stage, its share, and the node.
 
 RULES
 
@@ -80,5 +84,5 @@ def build_gaffer() -> LlmAgent:
             "and traces, and names the node or resource responsible."
         ),
         instruction=INSTRUCTION,
-        tools=[toolset(GAFFER_TOOLS)],
+        tools=[toolset(GAFFER_TOOLS), read_frame_trace],
     )

@@ -95,8 +95,8 @@ class FrameTracer:
         )
         try:
             cursor = start_ns
-            for stage, share in STAGE_SHARE.items():
-                stage_seconds = duration * self._stage_share(stage, share, cache_ratio)
+            for stage, share in self._shares(cache_ratio).items():
+                stage_seconds = duration * share
                 stage_end = cursor + int(stage_seconds * 1e9)
                 with trace.use_span(parent, end_on_exit=False):
                     child = self._tracer.start_span(stage, start_time=cursor)
@@ -111,8 +111,23 @@ class FrameTracer:
             parent.end(end_time=end_ns)
 
     @staticmethod
-    def _stage_share(stage: str, share: float, cache_ratio: float) -> float:
-        """A cold cache lands on texture_fetch, not evenly across the frame."""
-        if stage == "texture_fetch" and cache_ratio < 0.9:
-            return min(0.75, share * (1.0 + (0.9 - cache_ratio) * 8.0))
-        return share
+    def _shares(cache_ratio: float) -> dict[str, float]:
+        """Stage shares of one frame, summing to 1.0.
+
+        A cold cache lands on texture_fetch rather than spreading evenly. The
+        boost used to be applied to that stage alone, which pushed the shares
+        to 1.52 in total -- the child spans then outlasted the parent they sat
+        inside, which cannot happen in a real trace and is obvious in a Tempo
+        waterfall. The other stages are now compressed to make room, so the
+        frame still adds up to itself.
+        """
+        shares = dict(STAGE_SHARE)
+        if cache_ratio >= 0.9:
+            return shares
+        boosted = min(0.75, shares["texture_fetch"] * (1.0 + (0.9 - cache_ratio) * 8.0))
+        rest = 1.0 - boosted
+        others = {k: v for k, v in shares.items() if k != "texture_fetch"}
+        scale = rest / sum(others.values())
+        out = {k: v * scale for k, v in others.items()}
+        out["texture_fetch"] = boosted
+        return {k: out[k] for k in shares}

@@ -58,10 +58,14 @@ GAFFER_TOOLS = [
     "list_loki_label_names",
     "list_loki_label_values",
     "find_error_pattern_logs",
-    # Searches Tempo for slow requests -- the one route from the required MCP
-    # server to trace data, since there is no TraceQL tool.
-    "find_slow_requests",
-    "get_sift_investigation",
+    # NOTE: `find_slow_requests` and `get_sift_investigation` are deliberately
+    # NOT here. They are the MCP server's only route to Tempo and both go
+    # through a Sift investigation, which on this stack returns "creating
+    # investigation: investigation failed: There was an internal error running
+    # your investigation." Leaving them in the allowlist meant the Gaffer spent
+    # a turn on a call that could only fail, and the error text landed in the
+    # trace panel. Traces are read through the datasource proxy instead --
+    # see agent/traces.py.
 ]
 
 PRODUCER_TOOLS = [
