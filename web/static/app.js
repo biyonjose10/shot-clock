@@ -443,9 +443,16 @@
 
     agent_thought: function (event) {
       setActiveCrew(event.actor);
+      var text = (event.payload || {}).text || "";
       addRow(event, "ev--thought", function (body, p) {
-        body.appendChild(el("p", "ev__text", p.text || p.thought || p.message || ""));
+        body.appendChild(el("p", "ev__text",
+          plainProse(text || p.thought || p.message || "")));
       });
+      // The First AD's closing text is the production note itself. The
+      // scripted journal carried it on a write_back payload; a live run puts
+      // it here, so without this the panel sits headed and empty through the
+      // one beat the narration spends on it.
+      if (event.actor === "first_ad" && text) renderNote(text);
     },
 
     tool_call: function (event) {
@@ -609,6 +616,7 @@
   // --------------------------------------------------------------- report --
 
   function resetRun() {
+    seenLinks = {};
     trace.node.innerHTML = "";
     trace.rows = 0;
     trace.stuck = true;
@@ -625,8 +633,8 @@
     report.links = el("div", "deeplinks");
     // Numbers, then the proof it was written back, then the long read.
     $("report").appendChild(report.costing);
-    $("report").appendChild(report.links);
     $("report").appendChild(report.noteSlot);
+    $("report").appendChild(report.links);
   }
 
   var report = { costing: null, note: null, noteSlot: null, links: null };
@@ -641,8 +649,8 @@
     report.links = el("div", "deeplinks");
     // Numbers, then the proof it was written back, then the long read.
     $("report").appendChild(report.costing);
-    $("report").appendChild(report.links);
     $("report").appendChild(report.noteSlot);
+    $("report").appendChild(report.links);
   }
 
   function renderCosting(p) {
@@ -666,7 +674,44 @@
     $("report-note").textContent = "filed by Producer";
   }
 
-  function renderNote(text) {
+  /* The agents write markdown, because that is what a language model does when
+     asked for a report. The panel is not a markdown renderer, so asterisks
+     arrive on screen as asterisks. Strip the emphasis markers and drop the
+     agent's own "PRODUCTION NOTE" heading, which only repeats the panel's. */
+  /* A Grafana Explore deeplink is a few hundred characters of percent-encoded
+     JSON. The agents quote them, which is correct of them and unreadable on a
+     screen -- at the write-back beat the trace panel filled with
+     "%7B%22datasource%22%3A". The links themselves are rendered as real rows
+     in the report, so in prose they only need to be named. */
+  function elideUrls(text) {
+    return String(text).replace(/https?:\/\/[^\s)>\]]+/g, function (url) {
+      if (url.indexOf("/explore") !== -1) return "[Grafana Explore link]";
+      if (url.indexOf("/incidents/") !== -1) return "[Grafana incident]";
+      if (url.indexOf("/d/") !== -1) return "[Grafana dashboard]";
+      return "[Grafana link]";
+    });
+  }
+
+  /* The agents write markdown, because that is what a model does when asked
+     for a report, and this panel is not a markdown renderer -- so "**Cost:**"
+     arrived on screen with its asterisks. Applied to every place agent prose
+     is displayed, not only the note. */
+  function plainProse(text) {
+    return elideUrls(text)
+      .replace(/\*\*\s*/g, "")
+      .replace(/(^|\n)\s*#{1,6}\s*/g, "$1")
+      .replace(/(^|\n)\s*[-*]\s+/g, "$1· ");
+  }
+
+  function tidyNote(text) {
+    return plainProse(text)
+      .replace(/^\s*#*\s*PRODUCTION NOTE\s*:?\s*/i, "")
+      .trim();
+  }
+
+  function renderNote(raw) {
+    var text = tidyNote(raw);
+    if (!text) return;
     if (!report.noteSlot) resetReportSlots();
     if (!report.note) {
       report.note = el("div", "note");
@@ -687,8 +732,29 @@
     return p.resource || p.kind_ || p.target_kind || "resource";
   }
 
+  /* A deeplink arrives with no title of its own, and "deeplink · deeplink"
+     tells a reader nothing. Name it by where it actually lands. */
+  function linkTitle(p) {
+    var title = p.title && p.title !== p.resource ? p.title : "";
+    if (title) return title;
+    var url = String(p.url || "");
+    if (url.indexOf("/explore") !== -1) return "Explore the renderer logs in Grafana";
+    if (url.indexOf("/d/") !== -1) return "The render farm dashboard";
+    if (url.indexOf("/snapshot") !== -1) return "Dashboard snapshot";
+    return "Open in Grafana";
+  }
+
+  var seenLinks = {};
+
   function addDeeplink(p) {
     if (!p.url) return;
+    var name = linkTitle(p);
+    // Deduped by destination AND by name: an agent calling generate_deeplink
+    // twice for the same place is being thorough, not finding two things, and
+    // two rows reading the same thing look like a bug.
+    if (seenLinks[p.url] || seenLinks[name]) return;
+    seenLinks[p.url] = true;
+    seenLinks[name] = true;
     if (!report.links) resetReportSlots();
     var link = el("a", "deeplink");
     link.href = p.url;
@@ -697,8 +763,7 @@
     var left = el("div");
     left.appendChild(el("div", "deeplink__kind",
       "open in grafana · " + writeKind(p)));
-    left.appendChild(el("div", "deeplink__title",
-      p.title || p.target || p.url));
+    left.appendChild(el("div", "deeplink__title", linkTitle(p)));
     link.appendChild(left);
     link.appendChild(el("span", "deeplink__go", (p.id ? "#" + p.id + " " : "") + "open"));
     report.links.appendChild(link);
