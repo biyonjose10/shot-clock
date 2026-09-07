@@ -13,6 +13,25 @@
 (function () {
   "use strict";
 
+  /* Every viewer gets their own replay on the server, keyed by this id.
+     Without it the whole process shared one journal and one demo task, so a
+     second judge pressing Run demo cancelled the first judge's replay
+     mid-run. sessionStorage, not localStorage: a reload should rejoin the
+     same run, but a second tab is honestly a second viewer. */
+  var SID = (function () {
+    try {
+      var found = sessionStorage.getItem("shotclock.sid");
+      if (found) return found;
+      var made = (crypto.randomUUID && crypto.randomUUID()) ||
+        String(Date.now()) + Math.random().toString(16).slice(2);
+      sessionStorage.setItem("shotclock.sid", made);
+      return made;
+    } catch (err) {
+      /* Private mode can throw on both calls; a per-load id still isolates. */
+      return String(Date.now()) + Math.random().toString(16).slice(2);
+    }
+  })();
+
   var BOARD_POLL_MS = 2000;
   var CLOCK_TICK_MS = 250;
   var MAX_TRACE_ROWS = 400;
@@ -701,7 +720,7 @@
   // ------------------------------------------------------------------ SSE --
 
   function connect() {
-    var source = new EventSource("/api/events");
+    var source = new EventSource("/api/events?sid=" + encodeURIComponent(SID));
 
     source.onopen = function () {
       $("feed-dot").className = "dot is-live";
@@ -753,13 +772,13 @@
       trace.node.scrollTop = trace.node.scrollHeight;
     });
 
-    $("demo-btn").addEventListener("click", function () {
+    function startDemo() {
       $("demo-btn").disabled = true;
       $("demo-btn").textContent = "Starting";
-      fetch("/api/demo", {
+      return fetch("/api/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({})
+        body: JSON.stringify({ sid: SID })
       })
         .then(function (r) { return r.json(); })
         .then(function (info) {
@@ -770,12 +789,20 @@
           $("demo-btn").disabled = false;
           $("demo-btn").textContent = "Run demo";
         });
-    });
+    }
+
+    $("demo-btn").addEventListener("click", startDemo);
 
     pollBoard();
     setInterval(pollBoard, BOARD_POLL_MS);
     setInterval(tickClock, CLOCK_TICK_MS);
     connect();
+
+    /* Start without being asked. A visitor who does not find this button sees
+       a shot board and leaves, having missed the entire product -- the agents,
+       the tech check and the write-back are all inside the run. The button
+       stays, to watch it again. */
+    setTimeout(startDemo, 900);
   }
 
   if (document.readyState === "loading") {

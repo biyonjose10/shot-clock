@@ -23,6 +23,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, AsyncIterator
 
@@ -97,17 +98,72 @@ def safe_payload(payload: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+#: How long a viewer's session survives without being read from.
+VIEWER_TTL_SECONDS = 30 * 60
+
+#: Ceiling on concurrent viewer sessions, so a public URL cannot be turned into
+#: unbounded memory by opening tabs.
+MAX_VIEWERS = 32
+
+
+class Viewer:
+    """One browser's private view of the farm.
+
+    The farm is shared -- there is one render farm and everybody watches it --
+    but a *replay* is not. This used to be process-wide: one journal, one
+    demo task, and starting a demo cancelled whatever was already running. Two
+    judges on the same Cloud Run instance therefore fought over one stream,
+    and the second to press the button yanked the replay out from under the
+    first. Cloud Run packs 80 concurrent requests onto an instance, so during
+    judging that is not an edge case, it is the normal case.
+    """
+
+    def __init__(self) -> None:
+        self.journal = Journal()
+        self.demo_task: asyncio.Task[None] | None = None
+        self.demo_source: str | None = None
+        self.seen = time.monotonic()
+
+    def touch(self) -> None:
+        self.seen = time.monotonic()
+
+
 class Console:
-    """Everything the two endpoints share. One instance, created at startup."""
+    """Everything the endpoints share: the farm, the board, and the viewers."""
 
     def __init__(self) -> None:
         self.farm = Farm()
-        # A Journal per process. The UI clears its panels whenever it sees a
-        # run_start, so several runs can share one stream without confusion.
-        self.journal = Journal()
         self.board: dict[str, Any] = {}
-        self.demo_task: asyncio.Task[None] | None = None
-        self.demo_source: str | None = None
+        self.viewers: dict[str, Viewer] = {}
+
+    # -- viewers ------------------------------------------------------------
+    def viewer(self, sid: str | None) -> Viewer:
+        """The session for this browser, creating it if new.
+
+        A missing id falls back to one shared session, so curl and the health
+        checks keep working without inventing an identity.
+        """
+        key = (sid or "shared").strip()[:64] or "shared"
+        self._evict()
+        v = self.viewers.get(key)
+        if v is None:
+            if len(self.viewers) >= MAX_VIEWERS:
+                # Drop the least recently used rather than refuse a judge.
+                oldest = min(self.viewers, key=lambda k: self.viewers[k].seen)
+                self._close(oldest)
+            v = self.viewers[key] = Viewer()
+        v.touch()
+        return v
+
+    def _evict(self) -> None:
+        cutoff = time.monotonic() - VIEWER_TTL_SECONDS
+        for key in [k for k, v in self.viewers.items() if v.seen < cutoff]:
+            self._close(key)
+
+    def _close(self, key: str) -> None:
+        v = self.viewers.pop(key, None)
+        if v and v.demo_task is not None and not v.demo_task.done():
+            v.demo_task.cancel()
 
     # -- farm ---------------------------------------------------------------
     def warm_up(self) -> None:
@@ -131,7 +187,7 @@ class Console:
 
     # -- demo ---------------------------------------------------------------
     async def replay_into_live(
-        self, path: Path, speed: float, directed: bool = True
+        self, viewer: "Viewer", path: Path, speed: float, directed: bool = True
     ) -> None:
         """Re-record a journal file into the live journal at its own cadence.
 
@@ -145,7 +201,9 @@ class Console:
                 path, speed=speed, directed=directed
             ):
                 try:
-                    self.journal.record(event.kind, event.actor, **safe_payload(event.payload))
+                    viewer.journal.record(
+                        event.kind, event.actor, **safe_payload(event.payload)
+                    )
                     last = event.kind
                 except Exception:  # pragma: no cover
                     # One malformed event must never truncate the replay: the
@@ -159,7 +217,7 @@ class Console:
         # A journal that lacks one -- or a replay that fell over partway --
         # would strand the UI mid-run, so close the run out either way.
         if last and last != journal_mod.RUN_END:
-            self.journal.record(journal_mod.RUN_END, "system")
+            viewer.journal.record(journal_mod.RUN_END, "system")
 
 
 CONSOLE = Console()
@@ -314,8 +372,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         ticker.cancel()
-        if CONSOLE.demo_task is not None:
-            CONSOLE.demo_task.cancel()
+        for key in list(CONSOLE.viewers):
+            CONSOLE._close(key)
         with contextlib.suppress(asyncio.CancelledError):
             await ticker
 
@@ -346,12 +404,14 @@ async def events(request: Request) -> StreamingResponse:
     the whole trace instead of joining blind.
     """
 
+    viewer = CONSOLE.viewer(request.query_params.get("sid"))
+
     async def source() -> AsyncIterator[str]:
         queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=1000)
 
         async def pump() -> None:
             try:
-                async for event in CONSOLE.journal.stream():
+                async for event in viewer.journal.stream():
                     await queue.put(event.to_json())
             finally:
                 await queue.put(None)
@@ -364,7 +424,9 @@ async def events(request: Request) -> StreamingResponse:
                     payload = await asyncio.wait_for(queue.get(), timeout=15.0)
                 except asyncio.TimeoutError:
                     # A comment line keeps proxies and load balancers from
-                    # deciding an idle stream is a dead one.
+                    # deciding an idle stream is a dead one, and marks the
+                    # session live so a watching judge is never evicted.
+                    viewer.touch()
                     yield ": keep-alive\n\n"
                     continue
                 if payload is None:
@@ -436,7 +498,7 @@ def _demo_journal(requested: str | None) -> tuple[Path, bool]:
     candidates = [
         p
         for p in journal_mod.JOURNAL_DIR.glob("*.jsonl")
-        if p != CONSOLE.journal.path
+        if p not in {v.journal.path for v in CONSOLE.viewers.values()}
         and p.stat().st_size > 0
         and not p.name.startswith(scripted_demo.FILENAME_STEM)
         and _is_real_complete_run(p)
@@ -467,14 +529,16 @@ async def demo(request: Request) -> JSONResponse:
     directed = bool(body.get("directed", True))
     path, synthetic = _demo_journal(body.get("path"))
 
-    if CONSOLE.demo_task is not None and not CONSOLE.demo_task.done():
-        CONSOLE.demo_task.cancel()
+    viewer = CONSOLE.viewer(body.get("sid") or request.query_params.get("sid"))
+    # Only this viewer's own replay is replaced; everyone else keeps watching.
+    if viewer.demo_task is not None and not viewer.demo_task.done():
+        viewer.demo_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
-            await CONSOLE.demo_task
+            await viewer.demo_task
 
-    CONSOLE.demo_source = str(path)
-    CONSOLE.demo_task = asyncio.create_task(
-        CONSOLE.replay_into_live(path, speed, directed)
+    viewer.demo_source = str(path)
+    viewer.demo_task = asyncio.create_task(
+        CONSOLE.replay_into_live(viewer, path, speed, directed)
     )
     return JSONResponse(
         {
@@ -490,16 +554,18 @@ async def demo(request: Request) -> JSONResponse:
 
 
 @app.get("/api/status")
-async def status() -> JSONResponse:
+async def status(request: Request) -> JSONResponse:
     """Small health/mode probe, handy when checking a deployment."""
-    running = CONSOLE.demo_task is not None and not CONSOLE.demo_task.done()
+    viewer = CONSOLE.viewer(request.query_params.get("sid"))
+    running = viewer.demo_task is not None and not viewer.demo_task.done()
     return JSONResponse(
         {
             "ok": True,
-            "run_id": CONSOLE.journal.run_id,
-            "events_recorded": len(CONSOLE.journal.events),
+            "run_id": viewer.journal.run_id,
+            "events_recorded": len(viewer.journal.events),
+            "viewers": len(CONSOLE.viewers),
             "demo_running": running,
-            "demo_source": CONSOLE.demo_source,
+            "demo_source": viewer.demo_source,
             "sim_time": CONSOLE.board.get("sim_time"),
         }
     )
