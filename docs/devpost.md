@@ -85,10 +85,13 @@ the moment it deploys.
 **`client.models.list()` advertises models the key cannot call.** The only
 availability check that means anything is a real request.
 
-**The demo was replaying a script and calling it real.** A scripted stand-in had
-been saved under a `live-*.jsonl` filename. The picker excluded stand-ins by
-filename, so it chose that file and reported it as a genuine recording. Journals
-now declare what they are in their own payload, and that is what is trusted.
+**The trace pillar was ingested and never read.** The MCP server's only route
+to Tempo runs a Sift investigation, which on our stack returns an internal
+error — so a three-signal claim was resting on two signals. Traces now go
+through the Grafana datasource proxy instead. Fixing it surfaced a second bug:
+the simulator boosted the `texture_fetch` span on a cold cache without
+compressing the other stages, so child spans outlasted the parent they sat
+inside — impossible in a real trace, and obvious in a Tempo waterfall.
 
 **The costing was measuring the wrong clock.** The farm runs in production time,
 anchored six days before the delivery date. The costing measured that same

@@ -22,7 +22,7 @@ sold. This is that problem.
 | Agent | Job | Grafana MCP tools it uses |
 |---|---|---|
 | **Scout** | Sweeps farm health, finds which shots are at risk | `query_prometheus`, `list_prometheus_metric_names`, `list_prometheus_label_values`, `list_datasources` |
-| **Gaffer** | Proves the cause: metrics → logs → traces | `query_loki_logs`, `query_loki_patterns`, `find_error_pattern_logs`, `find_slow_requests`, `query_prometheus` |
+| **Gaffer** | Proves the cause: metrics → logs → traces | `query_loki_logs`, `query_loki_patterns`, `find_error_pattern_logs`, `query_prometheus`, plus `read_frame_trace` (Tempo, read through the datasource proxy) |
 | **Producer** | Converts the fault into delivery slip and dollars | `query_prometheus`, `query_prometheus_histogram` |
 | **First AD** | Acts: records the investigation in Grafana | `create_incident`, `add_activity_to_incident`, `create_annotation`, `update_dashboard`, `create_snapshot`, `generate_deeplink`, `get_panel_image` |
 
@@ -160,7 +160,7 @@ curl -sSL https://github.com/grafana/mcp-grafana/releases/latest/download/mcp-gr
 ```bash
 python scripts/preflight.py          # credentials, OTLP ingest, Grafana read AND write
 python scripts/list_mcp_tools.py     # enumerate the MCP tools from the running server
-python scripts/verify_writeback.py   # prove annotation, dashboard and snapshot writes work
+python scripts/verify_writeback.py   # prove annotation, dashboard, snapshot and incident writes
 ```
 
 ### Run
@@ -193,6 +193,23 @@ all, if you just want to see the farm work.
 - A Grafana Cloud stack ships three Loki datasources. The alphabetically first
   is `alert-state-history`, which is permanently empty — an agent that lands
   there reports "no logs" and looks broken. The uids are pinned in `agent/mcp.py`.
+
+## What DEMO MODE does and does not do
+
+The war room replays a real recorded crew run — `journals/demo-crew-texture-cache.jsonl`
+is the journal of an actual investigation, and every number on screen is one an
+agent read from Grafana. The picker refuses any journal that is scripted or
+that stops partway, so it cannot quietly fall back to a stand-in.
+
+The replay is **paced**. A real investigation does not pace itself for an
+audience: the recorded run spent 66 of its 154 seconds in the Scout and reached
+the tech check with 13 seconds left for it. `direct()` in `agent/journal.py`
+stretches and compresses each section onto the narration's beats and holds
+still after the verdict, so the frame can actually be looked at.
+
+It adds, removes, reorders and alters nothing — same events, same order, same
+payloads, asserted in the code. Only the rate of playback changes, which the
+existing `speed` and `max_gap` arguments were already doing.
 
 ## Licence
 

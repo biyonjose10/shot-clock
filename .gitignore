@@ -12,7 +12,10 @@ bin/
 # Ad-hoc run journals; the curated demo journal IS committed
 journals/live-*.jsonl
 
-# Generated frames and audio
+# Generated frames and audio. The voiceover lives in demo/audio/, which
+# `demo/*.wav` did not match -- so 8MB of generated speech sat one stray
+# `git add -A` away from the history.
 web/static/frames/*.png
 demo/*.wav
+demo/audio/
 .tools/
