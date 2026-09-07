@@ -181,11 +181,40 @@ class Console:
         self.farm.run(ticks, dt=SIM_SECONDS_PER_SECOND)
         self.board = build_board(self.farm)
 
+    def production_is_spent(self) -> bool:
+        """Has this run of the film finished, or run out of calendar?"""
+        return (
+            self.farm.seconds_to_delivery <= 0
+            or self.farm.summary().shots_complete >= len(self.farm.film.shots)
+        )
+
+    def recycle(self) -> None:
+        """Start the production again from a believable mid-shoot state.
+
+        The clock advances ten production minutes every real second, and the
+        production window is six days, so the farm outruns its own delivery
+        date after about fourteen minutes of uptime. Cloud Run keeps an
+        instance warm for roughly fifteen, which means a visitor arriving at a
+        warm instance was shown a farm that had rendered 183,050 of its 161,200
+        frames: an empty shot board, nothing in flight, no nodes rendering, and
+        a countdown reading a day PAST delivery. The worst possible first
+        impression, and it needed no bug to produce -- only a server left up.
+
+        Recycling is honest about what this is. The farm is a simulation of a
+        six-day shoot; when the shoot ends, another one starts.
+        """
+        log.info("production complete; starting the next run of the film")
+        self.farm = Farm()
+        self.warm_up()
+
     async def tick_forever(self) -> None:
         """Keep production time moving. Cancelled on shutdown."""
         while True:
             await asyncio.sleep(TICK_INTERVAL)
             try:
+                if self.production_is_spent():
+                    self.recycle()
+                    continue
                 self.farm.tick(SIM_SECONDS_PER_SECOND * TICK_INTERVAL)
                 # Built once per tick rather than per request: the risk
                 # projection walks all 1200 shots and there is no reason to

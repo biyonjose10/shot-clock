@@ -199,3 +199,36 @@ def test_replay_yields_every_event_in_order(tmp_path):
         return [e.seq async for e in J.replay(path, speed=1000.0, max_gap=0.0)]
 
     assert asyncio.run(collect()) == [e.seq for e in _run()]
+
+
+# --- a server left running --------------------------------------------------
+
+def test_a_spent_production_restarts_instead_of_emptying_the_board():
+    """The worst first impression this project can make, and no bug is needed.
+
+    The clock runs at ten production minutes a second over a six-day window,
+    so the farm outruns its own delivery date after about fourteen minutes of
+    uptime -- and Cloud Run keeps an instance warm for roughly fifteen. A
+    visitor arriving at a warm instance was shown 183,050 of 161,200 frames
+    rendered: empty board, nothing in flight, and a countdown a day PAST
+    delivery.
+    """
+    import web.server as W
+
+    console = W.Console()
+    console.warm_up()
+    assert not console.production_is_spent()
+
+    for _ in range(5000):
+        if console.production_is_spent():
+            break
+        console.farm.tick(W.SIM_SECONDS_PER_SECOND * W.TICK_INTERVAL)
+    else:
+        pytest.fail("the production never finished; this test would not prove anything")
+
+    console.recycle()
+    summary = console.farm.summary()
+    board = W.build_board(console.farm)
+    assert summary.seconds_to_delivery > 0, "a recycled farm needs calendar left"
+    assert summary.frames_rendered < summary.frames_total, "and work left to do"
+    assert sum(board["in_flight_counts"].values()) > 0, "and shots on the board"
