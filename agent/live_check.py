@@ -26,9 +26,18 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "journals" / ".live_check.json"
 
-#: Live inspections per day, across every visitor. Generous for judging, far
-#: too small to matter on a bill.
-DAILY_LIMIT = int(os.environ.get("SHOT_CLOCK_LIVE_CHECK_LIMIT", "40"))
+#: Live inspections per day. NOT a global cap, and it is important to be
+#: honest about why: this counter lives in a file on the container filesystem,
+#: which on Cloud Run is in-memory and per-instance. Every cold start resets
+#: it and every concurrent instance keeps its own, so the real allowance is
+#: this number times the number of instance lifetimes -- which at maxScale 20
+#: and a 40 limit was about 800 calls per scale-up wave, not 40 a day.
+#:
+#: Two things bound it instead. `deploy.sh` pins maxScale low, so the multiplier
+#: is small; and the project carries a Vertex AI quota override, which is a
+#: ceiling Google enforces regardless of how many instances exist. This number
+#: is the polite limit, not the safety one.
+DAILY_LIMIT = int(os.environ.get("SHOT_CLOCK_LIVE_CHECK_LIMIT", "12"))
 
 #: The plate a judge inspects. Deterministic, and the defect is genuinely in
 #: the image rather than asserted in a caption.

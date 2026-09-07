@@ -73,6 +73,15 @@ WARMUP_SIM_SECONDS = 6 * 3600.0
 #: beats back off the narration's marks.
 DEFAULT_DEMO_SPEED = 1.0
 
+#: Longest a single /api/events connection is held open. Cloud Run bills CPU
+#: while a request is active, and an SSE stream keeps one active for its whole
+#: life -- so an idle held connection is a meter running on a page nobody is
+#: watching. The container timeout is 600s; a replay is about 150s, so this is
+#: generous for any real viewer and refuses to fund a forgotten tab. The
+#: browser's EventSource reconnects on its own, and a reconnecting client is
+#: sent the backlog, so closing the stream costs the viewer nothing.
+SSE_MAX_SECONDS = 240.0
+
 #: A shot that will land with less than this share of the remaining window to
 #: spare is "at risk": it is still projected to make it, but one retry or one
 #: degraded node takes it past the date. Below zero it is simply late.
@@ -417,9 +426,14 @@ async def events(request: Request) -> StreamingResponse:
                 await queue.put(None)
 
         task = asyncio.create_task(pump())
+        deadline = time.monotonic() + SSE_MAX_SECONDS
         try:
             yield ": open\n\n"
             while True:
+                if time.monotonic() > deadline:
+                    # Say why, then hang up. EventSource will come back.
+                    yield ": reconnect\n\n"
+                    return
                 try:
                     payload = await asyncio.wait_for(queue.get(), timeout=15.0)
                 except asyncio.TimeoutError:
