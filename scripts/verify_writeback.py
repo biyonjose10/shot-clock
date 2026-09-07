@@ -158,6 +158,18 @@ def check_incident(c: httpx.Client) -> bool | None:
         print(f"{FAIL}create_incident        HTTP {r.status_code} {r.text[:120]}")
         return False
     print(f"{PASS}create_incident        {str(r.json())[:100]}")
+    # Resolve what we just opened. Every run of this script used to leave
+    # another active "Shot Clock write-back check" on the stack, so anyone
+    # opening IRM found the real incidents outnumbered by test debris.
+    incident_id = (r.json().get("incident") or {}).get("incidentID")
+    if incident_id:
+        done = c.post(
+            "/api/plugins/grafana-irm-app/resources/api/v1/"
+            "IncidentsService.UpdateStatus",
+            json={"incidentID": incident_id, "status": "resolved"},
+        )
+        state = "resolved" if done.status_code == 200 else f"left open ({done.status_code})"
+        print(f"{'      '}check incident #{incident_id} {state}")
     return True
 
 

@@ -4,6 +4,10 @@
 
 **Live:** https://shot-clock-669554430519.us-central1.run.app
 
+![The Shot Clock war room: the Gaffer's trace breakdown showing texture_fetch
+consuming 64% of a frame, the Producer's costing, and the production note the
+First AD wrote back into Grafana](docs/img/war-room.png)
+
 A VFX studio has 1,200 shots and a delivery date that does not move. Shot Clock
 is a crew of Gemini agents that watches the render farm's telemetry in Grafana,
 works out which shots will miss the date, proves why, looks at the actual
@@ -96,6 +100,43 @@ running binary**, not transcribed from documentation.
 ---
 
 ## Architecture
+
+Each signal answers a different question, and the split is forced by the data
+model rather than chosen. Shot-scoped metrics carry no `node` label — crossing
+node with shot would be 8,000 series against a 10k budget — so getting from
+"this shot is slow" to "this node did it" has to go through the logs, and
+getting from there to "this stage of the frame absorbed it" has to go through
+the trace.
+
+```mermaid
+flowchart LR
+    SIM["sim/<br/>200 nodes, 1,200 shots"]
+
+    SIM -->|OTLP| PROM["Prometheus<br/><i>which shot</i>"]
+    SIM -->|OTLP| LOKI["Loki<br/><i>which node</i>"]
+    SIM -->|OTLP| TEMPO["Tempo<br/><i>which stage</i>"]
+    SIM --> PNG["rendered frames<br/><i>is the image right</i>"]
+
+    PROM --> SCOUT["Scout<br/>what is at risk"]
+    PROM --> GAFFER["Gaffer<br/>why"]
+    LOKI --> GAFFER
+    TEMPO --> GAFFER
+
+    SCOUT --> GAFFER
+    GAFFER --> VISION["Tech check<br/>deterministic, not an agent"]
+    PNG --> VISION
+    VISION --> PRODUCER["Producer<br/>hours and dollars"]
+    PROM --> PRODUCER
+    PRODUCER --> AD["First AD<br/>writes it back"]
+    AD --> GRAFANA["Grafana<br/>incident · timeline · annotation"]
+
+    style VISION stroke-dasharray: 4 4
+    style GRAFANA stroke-width:2px
+```
+
+The tech check is drawn dashed because it is the one step no model chooses to
+take: a frame that exits 0 with a normal duration produces no signal to react
+to, so nothing would ever route to it. It runs because the pipeline says so.
 
 ```
 sim/          a 200-node render farm working through a 1,200-shot film
