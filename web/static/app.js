@@ -581,6 +581,8 @@
       $("trace-note").textContent = "run complete";
       $("demo-btn").disabled = false;
       $("demo-btn").textContent = "Run demo";
+      // Nothing further will arrive; stop paying to listen for it.
+      disconnect("run complete");
     }
   };
 
@@ -719,8 +721,20 @@
 
   // ------------------------------------------------------------------ SSE --
 
+  /* The open stream, or null when nothing is running.
+
+     Cloud Run bills CPU for as long as a request is active, and an SSE stream
+     keeps one active for its whole life -- so a tab left open on a finished
+     run is a meter running on a page nobody is watching, and EventSource
+     reconnects for ever by itself. There is nothing left to receive after
+     run_end, so the feed is closed then and reopened when someone asks for
+     another run. */
+  var feed = { source: null };
+
   function connect() {
+    if (feed.source) return;
     var source = new EventSource("/api/events?sid=" + encodeURIComponent(SID));
+    feed.source = source;
 
     source.onopen = function () {
       $("feed-dot").className = "dot is-live";
@@ -736,6 +750,14 @@
       try { event = JSON.parse(message.data); } catch (err) { return; }
       handleEvent(event);
     };
+  }
+
+  function disconnect(label) {
+    if (!feed.source) return;
+    feed.source.close();
+    feed.source = null;
+    $("feed-dot").className = "dot";
+    $("feed-label").textContent = label || "idle";
   }
 
   // ----------------------------------------------------------------- boot --
@@ -775,6 +797,7 @@
     function startDemo() {
       $("demo-btn").disabled = true;
       $("demo-btn").textContent = "Starting";
+      connect();  // reopened here if a previous run closed it
       return fetch("/api/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
