@@ -35,6 +35,13 @@ renders the frame and asks Gemini to look at it.
 
 ### 1. It writes back to Grafana
 
+> **See it without an account:** [the dashboard the crew annotated](https://robustspring2217.grafana.net/dashboard/snapshot/DUlLOLRjLOr4Iy9B3beRr2mJEMj2WtSm).
+> Grafana Cloud has no anonymous access, so a normal dashboard link answers
+> `401` to anyone who is not on the stack — which would make the one claim
+> that matters most impossible to check. Snapshots are the public route, and
+> `create_snapshot` is one of the First AD's own tools.
+
+
 Most observability agents read. This one opens an incident, adds the diagnosis
 to that incident's timeline, stamps an annotation on the dashboard at the moment
 the fault began, creates a snapshot, and produces a deeplink. Those artefacts

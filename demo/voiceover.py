@@ -85,6 +85,30 @@ def _pcm_to_wav(path: Path, pcm: bytes, rate: int = 24_000) -> None:
 
 
 def speak(slug: str, text: str) -> Path:
+    """Generate one segment, rejecting output that has obviously run away.
+
+    The model occasionally returns a wildly long take -- 49 words came back as
+    339 seconds once, and 16 words as 655. The same text regenerates correctly,
+    so this is a bad roll rather than a bad script, and the answer is to notice
+    and ask again. Without the check a corrupt segment sits on disk looking
+    exactly like a good one until someone plays it.
+    """
+    budget = expected_seconds(text) * RUNAWAY_FACTOR
+    last: Path | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        last = _speak_once(slug, text)
+        seconds = wav_seconds(last)
+        if seconds <= budget:
+            return last
+        print(
+            f"    runaway take: {seconds:.0f}s for {len(text.split())} words "
+            f"(budget {budget:.0f}s). attempt {attempt} of {MAX_ATTEMPTS}."
+        )
+    print(f"    WARNING: {slug} never came back within budget; keeping the last take.")
+    return last
+
+
+def _speak_once(slug: str, text: str) -> Path:
     from google import genai
     from google.genai import types
 
@@ -125,6 +149,22 @@ MAX_NARRATION_SECONDS = 160.0
 #: writing is expensive in TTS seconds, so a segment of short sentences needs
 #: roughly twice the time its word count suggests.
 WORDS_PER_MINUTE = 118.7
+
+
+#: A generation is rejected past this multiple of its expected length. The
+#: model occasionally runs away: 49 words came back as 339 seconds of audio,
+#: and 16 words as 655. It is not a text problem -- the same text regenerates
+#: correctly -- so the fix is to notice and ask again rather than to rewrite.
+#: 2.5x is comfortably above honest variation (numbers and short sentences run
+#: slow, up to about 1.6x) and far below any runaway seen.
+RUNAWAY_FACTOR = 2.5
+
+#: How many times to ask again before giving up on a segment.
+MAX_ATTEMPTS = 3
+
+
+def expected_seconds(text: str) -> float:
+    return len(text.split()) / WORDS_PER_MINUTE * 60.0
 
 
 def wav_seconds(path: Path) -> float:

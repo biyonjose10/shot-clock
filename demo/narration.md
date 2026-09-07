@@ -61,13 +61,16 @@ real PromQL, responses coming back.*
 
 > The Gaffer proves the cause.
 >
-> Metrics say which shot is hurting, but deliberately not which node — that
-> label would cost eight thousand series. So it goes to the logs.
+> Metrics say which shot is hurting, but not which node — that label would cost
+> eight thousand series. So it goes to the logs.
 
 *On screen: `query_loki_logs`, then the returned renderer stderr.*
 
 > Texture cache collapse — not licence starvation, the pools are full, and not
 > a memory leak, memory is flat.
+>
+> Then the trace — the only signal that sees inside one frame. Texture fetch ate
+> two thirds of it, the only span marked error.
 >
 > It says what it ruled out. That is a diagnosis, not a guess.
 
@@ -101,8 +104,8 @@ hold for a full two seconds before the verdict lands.**
 
 *On screen: the costing tiles resolving.*
 
-> Throughput down seventy-nine percent, delivery four hundred and twelve hours
-> late, exposure two hundred and sixty-six thousand dollars.
+> Throughput down seventy-nine percent, delivery four hundred and four hours
+> late, exposure three hundred and thirteen thousand dollars.
 >
 > No model calculated those — ask a language model for a cost and it invents a
 > new one each time. The maths is Python, and it checks itself.

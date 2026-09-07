@@ -4,6 +4,7 @@ Agentic Cinema: The Blockbuster Hackathon · **Grafana Labs track**
 
 Live: https://shot-clock-669554430519.us-central1.run.app
 Repo: https://github.com/biyonjose10/shot-clock (MIT)
+The Grafana dashboard the crew wrote to, viewable without an account: https://robustspring2217.grafana.net/dashboard/snapshot/DUlLOLRjLOr4Iy9B3beRr2mJEMj2WtSm
 
 ---
 
