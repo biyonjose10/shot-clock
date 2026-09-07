@@ -172,12 +172,18 @@ def latest(pattern: str = "*.jsonl") -> Path | None:
 #: is added, removed, reordered or edited, and every number on screen is the
 #: one the agent read. Only the rate of playback changes, which `speed` and
 #: `max_gap` were already doing.
+#: Set from MEASURED voiceover audio, not from the script's section headings.
+#: The written timings assumed 135 words a minute; Gemini TTS delivers about
+#: 119, and far less on short sentences, so the spoken take ran 22 seconds
+#: longer than the estimate against a 3:00 pass/fail limit. Fitting the picture
+#: to the voice is the way round that cannot drift: the voice is fixed audio,
+#: the picture is re-paceable.
 DEMO_SECTION_SECONDS: dict[str, float] = {
-    "scout": 20.0,
-    "gaffer": 25.0,
-    "vision": 30.0,
-    "producer": 25.0,
-    "first_ad": 25.0,
+    "scout": 17.0,
+    "gaffer": 30.0,
+    "vision": 33.0,
+    "producer": 26.0,
+    "first_ad": 29.0,
 }
 
 

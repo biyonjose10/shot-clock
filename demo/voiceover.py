@@ -115,7 +115,16 @@ MAX_NARRATION_SECONDS = 160.0
 
 #: A measured, unhurried read. Slower than the default pace, which is the point
 #: of the style direction -- so estimate against the slow end, not the fast one.
-WORDS_PER_MINUTE = 135.0
+#: Measured from generated audio, not assumed. This was 135, which read the
+#: script 22 seconds short against a 3:00 pass/fail limit -- the estimate said
+#: 2:37 and the voice came back at 2:59.
+#:
+#: The rate is not uniform, and the variation is the useful part: prose runs
+#: near 130, while the closing block of short declarative sentences came back
+#: at 66, because the model puts a real pause at every full stop. Punchy
+#: writing is expensive in TTS seconds, so a segment of short sentences needs
+#: roughly twice the time its word count suggests.
+WORDS_PER_MINUTE = 118.7
 
 
 def wav_seconds(path: Path) -> float:

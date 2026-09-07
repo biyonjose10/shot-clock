@@ -61,8 +61,8 @@ real PromQL, responses coming back.*
 
 > The Gaffer proves the cause.
 >
-> Metrics say which shot is hurting. They deliberately do not say which node —
-> that label would cost eight thousand series. So it goes to the logs.
+> Metrics say which shot is hurting, but deliberately not which node — that
+> label would cost eight thousand series. So it goes to the logs.
 
 *On screen: `query_loki_logs`, then the returned renderer stderr.*
 
@@ -77,19 +77,18 @@ real PromQL, responses coming back.*
 
 > Then Shot Clock does something telemetry cannot.
 >
-> This frame rendered successfully. Exit code zero. Normal duration. Every metric
-> on this shot is healthy.
+> This frame rendered successfully. Exit code zero, normal duration, every
+> metric healthy.
 
 *On screen: the frame appears. Beat. Hold on it.*
 
 > So Shot Clock looks at it.
 >
-> Gemini inspects the plate and finds fireflies — blown-out pixels from indirect
-> light that never converged. Scattered across the building geometry, ninety-five
-> percent confident.
+> Gemini finds fireflies — blown-out pixels from indirect light that never
+> converged, scattered across the building geometry. Ninety-five percent.
 >
-> The render did not fail. The image did. No metric would have caught it, and
-> every visual effects house pays people to catch it by eye.
+> The render did not fail. The image did — and every visual effects house pays
+> people to catch that by eye.
 
 **This is the beat the whole video exists for. Do not rush it. Let the frame
 hold for a full two seconds before the verdict lands.**
@@ -98,7 +97,7 @@ hold for a full two seconds before the verdict lands.**
 
 ## 1:50 – 2:15 · Producer
 
-> The Producer turns that into the only two numbers a studio acts on.
+> The Producer turns that into the numbers a studio acts on.
 
 *On screen: the costing tiles resolving.*
 
@@ -106,8 +105,7 @@ hold for a full two seconds before the verdict lands.**
 > delivery. Two hundred and sixty-six thousand dollars of exposure.
 >
 > No model calculated those. Ask a language model for a cost and it invents a
-> different one every time. The maths is Python, and it checks its own figures
-> add up.
+> different one each time. The maths is Python, and it checks itself.
 
 ---
 
@@ -115,23 +113,21 @@ hold for a full two seconds before the verdict lands.**
 
 > And then the crew stops reading, and acts.
 >
-> The First AD opens an incident, adds the diagnosis to its timeline, and stamps
-> an annotation on the dashboard at the minute the fault began.
+> The First AD opens an incident, adds the diagnosis to its timeline, and
+> annotates the dashboard at the minute the fault began.
 
 *On screen: the write-back rows landing amber, then the real Grafana page with
 the annotation on it.*
 
-> Tomorrow morning, whoever opens that dashboard finds the investigation already
-> written down. An agent that works, not one that talks.
+> Whoever opens that dashboard tomorrow finds the investigation already written
+> down. An agent that works, not one that talks.
 
 ---
 
 ## 2:40 – 2:52 · Close
 
-> Shot Clock. Gemini and the Agent Development Kit on Google Cloud, wired to
-> Grafana through the Model Context Protocol.
->
-> Twelve hundred shots. One date.
+> Shot Clock — Gemini agents on Google Cloud, wired to Grafana. Twelve hundred
+> shots, one date.
 
 *On screen: the production note, then the title.*
 
