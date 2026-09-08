@@ -590,7 +590,10 @@
       addRow(event, "ev--write", function (body) {
         body.appendChild(el("div", "write__kind",
           "wrote to grafana · " + writeKind(p)));
-        body.appendChild(el("div", "write__title", p.title || p.target || ""));
+        // Named by where it lands. A deeplink carries no title of its own, so
+        // this row used to read "deeplink / deeplink" during the write-back
+        // beat -- the same gap already fixed for the report's link rows.
+        body.appendChild(el("div", "write__title", p.title || linkTitle(p)));
       });
       addDeeplink(p);
       if (p.note) renderNote(p.note);
