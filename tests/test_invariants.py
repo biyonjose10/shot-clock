@@ -253,8 +253,14 @@ def test_live_run_allows_only_one_at_a_time(tmp_path, monkeypatch):
     """A crew run is minutes long; four at once multiply the bill and prove
     nothing the first does not."""
     from agent import live_run as lr
+    from agent import readings as R
 
     monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
+    # This test is about the slot, not the farm. Without stubbing, it asserts
+    # whatever Grafana happens to say -- which passed locally with a simulator
+    # running and failed in CI, where there are no credentials at all.
+    monkeypatch.setattr(R, "farm_is_reporting", lambda *a, **k: True)
+    lr._farm_checked_at = float("-inf")  # older than any cache window
     assert lr.available()
     assert lr._slot.acquire(blocking=False)
     try:
@@ -276,7 +282,10 @@ def test_live_run_is_withheld_when_no_farm_is_reporting(tmp_path, monkeypatch):
     monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
 
     def farm(live):
-        lr._farm_checked_at = 0.0  # bust the liveness cache
+        # -inf, not 0.0: the cache compares against time.monotonic(), which on
+        # a freshly booted runner can be smaller than the cache window, so 0.0
+        # still counted as "checked recently" and returned the stale answer.
+        lr._farm_checked_at = float("-inf")
         monkeypatch.setattr(R, "farm_is_reporting", lambda *a, **k: live)
 
     farm(True)
@@ -294,7 +303,7 @@ def test_unreachable_grafana_withholds_the_live_run(tmp_path, monkeypatch):
     from agent import readings as R
 
     monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
-    lr._farm_checked_at = 0.0
+    lr._farm_checked_at = float("-inf")
 
     def boom(*a, **k):
         raise RuntimeError("grafana unreachable")
