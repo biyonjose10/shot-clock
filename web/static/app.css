@@ -267,7 +267,11 @@ button { font: inherit; color: inherit; }
   border-radius: var(--radius);
   padding: 9px 10px 8px 12px;
   overflow: hidden;
-  animation: card-in 220ms ease both;
+  /* `forwards`, not `both`: `both` also holds the FROM state before the
+     animation starts, so a card whose entry animation never advances -- an
+     unfocused tab throttles them -- sits at opacity 0 and the board reads as
+     empty while being fully populated. `forwards` leaves it visible. */
+  animation: card-in 220ms ease forwards;
 }
 /* Risk is carried on the left edge, like a tab on a shot bag. */
 .shot::before {
@@ -754,11 +758,24 @@ button { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums; }
 .ev--trace .tool__verb { color: var(--tungsten); }
 
-/* The live-run button is the only control that spends money, so it reads as
-   the deliberate choice it is rather than sitting flush with the replay. */
+/* The live-run button is the only control that spends money, so it reads as a
+   deliberate choice rather than sitting flush with the replay: outlined, not
+   filled. `.btn` is already a FILLED tungsten button with dark text, so
+   setting only `color: tungsten` here painted amber text onto an amber
+   background and the label vanished -- the background has to be cleared too. */
 .btn--live {
+  background: transparent;
   border-color: var(--tungsten);
   color: var(--tungsten);
 }
-.btn--live:hover:not(:disabled) { background: var(--tungsten); color: var(--ink-000); }
-.btn--live:disabled { opacity: .55; }
+.btn--live:hover:not(:disabled) { background: var(--tungsten); color: #17110a; }
+.btn--live:disabled { opacity: .55; cursor: progress; }
+
+/* Three buttons plus six stats do not fit below about 1680px. The dot already
+   carries the feed state by colour, so the word goes and the stats keep their
+   room -- values rendering underneath the buttons is worse than a missing
+   label. */
+@media (max-width: 1680px) {
+  #feed-label { display: none; }
+  .slate__actions { gap: 8px; }
+}

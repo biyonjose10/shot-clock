@@ -520,30 +520,50 @@
       });
     },
 
+    /* The two journal shapes disagree about `frame`, and the disagreement was
+       invisible because the failure is silent. A scripted stand-in puts the
+       image PATH there; a live run puts the frame NUMBER there and the path in
+       `image`. So on a real journal this set img.src = "112", got a 404, and
+       the onerror handler quietly removed the picture -- leaving the beat this
+       whole project is built around showing a verdict beside nothing. Read
+       both shapes, and tell them apart by type rather than by hope. */
     vision_verdict: function (event) {
       addRow(event, "ev--vision", function (body, p) {
+        var src = p.image || (typeof p.frame === "string" ? p.frame : null);
+        var number = p.frame_number != null ? p.frame_number
+          : (typeof p.frame === "number" ? p.frame : null);
+
         var head = el("div", "tool");
         head.appendChild(el("span", "tool__verb", "LOOK"));
         head.appendChild(el("span", "tool__name",
-          (p.shot_id || "shot") + (p.frame_number ? " frame " + String(p.frame_number).padStart(4, "0") : "")));
+          (p.shot_id || "shot") +
+          (number != null ? " frame " + String(number).padStart(4, "0") : "")));
         body.appendChild(head);
 
         var wrap = el("div", "vision");
-        if (p.frame) {
+        if (src) {
           var img = el("img");
-          img.src = p.frame;
+          img.src = src;
           img.alt = (p.shot_id || "") + " rendered frame";
-          // The plates are gitignored; if this clone has none, drop the
-          // thumbnail rather than showing a broken image.
-          img.onerror = function () { img.parentNode.removeChild(img); };
+          // A clone with no plates rendered yet drops the thumbnail rather
+          // than showing a broken image. The server renders the ones the
+          // shipped journal cites at startup, so this is the fallback.
+          img.onerror = function () {
+            if (img.parentNode) img.parentNode.removeChild(img);
+          };
           wrap.appendChild(img);
         }
         var side = el("div");
         side.appendChild(el("div", "vision__verdict",
           (p.verdict || "verdict") + (p.defect ? " · " + p.defect : "")));
-        if (p.note) side.appendChild(el("p", "vision__note", p.note));
+        // A live run calls this `evidence`: it is the model saying what it saw,
+        // and it is the most interesting sentence on the page.
+        var note = p.note || p.evidence;
+        if (note) side.appendChild(el("p", "vision__note", plainProse(note)));
         var meta = [];
         if (p.confidence !== undefined) meta.push("confidence " + p.confidence);
+        if (p.region) meta.push(p.region);
+        if (p.deliverable === false) meta.push("not deliverable");
         if (p.metrics_clean) meta.push("every metric on this shot reads healthy");
         if (meta.length) side.appendChild(el("div", "vision__meta", meta.join("  ·  ")));
         wrap.appendChild(side);
@@ -590,7 +610,7 @@
       $("demo-btn").textContent = "Run demo";
       if ($("live-btn")) {
         $("live-btn").disabled = false;
-        $("live-btn").textContent = "Run the crew live";
+        $("live-btn").textContent = "Run live";
       }
       // Nothing further will arrive; stop paying to listen for it.
       disconnect("run complete");
@@ -902,7 +922,7 @@
         .then(function (info) {
           if (!info.started) {
             $("trace-note").textContent = info.reason || "live run unavailable";
-            btn.textContent = "Run the crew live";
+            btn.textContent = "Run live";
             btn.disabled = false;
             return;
           }
@@ -912,7 +932,7 @@
           $("demo-btn").disabled = true;
         })
         .catch(function () {
-          btn.textContent = "Run the crew live";
+          btn.textContent = "Run live";
           btn.disabled = false;
         });
     });

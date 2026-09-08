@@ -14,6 +14,15 @@
 # multiplier.
 set -e
 : "${GOOGLE_CLOUD_PROJECT:?set GOOGLE_CLOUD_PROJECT}"
+
+# The CLI is installed locally on the dev machine and is not on PATH, which is
+# what ./gcloud.sh exists for. Prefer it when `gcloud` is absent so this script
+# works in both places rather than failing on line 20 with "command not found".
+if command -v gcloud >/dev/null 2>&1; then
+  gcloud() { command gcloud "$@"; }
+else
+  gcloud() { "$(dirname "$0")/gcloud.sh" "$@"; }
+fi
 REGION="${GOOGLE_CLOUD_LOCATION:-us-central1}"
 MAX_INSTANCES="${SHOT_CLOCK_MAX_INSTANCES:-2}"
 
