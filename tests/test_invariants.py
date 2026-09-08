@@ -263,3 +263,41 @@ def test_live_run_allows_only_one_at_a_time(tmp_path, monkeypatch):
     finally:
         lr._slot.release()
     assert lr.available()
+
+
+def test_live_run_is_withheld_when_no_farm_is_reporting(tmp_path, monkeypatch):
+    """The container never exports telemetry -- its farm drives the shot board
+    and nothing else. The crew reads Grafana, fed by a simulator running
+    elsewhere. Without one, a live run finds nothing and fails in front of
+    whoever pressed the button, so the button must not be there."""
+    from agent import live_run as lr
+    from agent import readings as R
+
+    monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
+
+    def farm(live):
+        lr._farm_checked_at = 0.0  # bust the liveness cache
+        monkeypatch.setattr(R, "farm_is_reporting", lambda *a, **k: live)
+
+    farm(True)
+    assert lr.available()
+    assert lr.blocked_reason() is None
+
+    farm(False)
+    assert not lr.available()
+    assert "not reporting" in (lr.blocked_reason() or "")
+
+
+def test_unreachable_grafana_withholds_the_live_run(tmp_path, monkeypatch):
+    """Failing to answer is not the same as answering yes."""
+    from agent import live_run as lr
+    from agent import readings as R
+
+    monkeypatch.setattr(lr, "STATE", tmp_path / "live_run.json")
+    lr._farm_checked_at = 0.0
+
+    def boom(*a, **k):
+        raise RuntimeError("grafana unreachable")
+
+    monkeypatch.setattr(R, "farm_is_reporting", boom)
+    assert not lr.available()

@@ -35,6 +35,19 @@ renders the frame and asks Gemini to look at it.
 
 ---
 
+## You can make it run, not just watch it
+
+The war room replays a real recorded run by default, because that is instant
+and cannot be made to spend money by whoever opens the link. But the honest
+objection to any observability-agent demo is *"is this actually running, or is
+it a recording?"*, so there is a button that settles it: **Run the crew live**
+starts a genuine investigation — four Gemini agents querying Grafana over MCP —
+into the same journal the page already renders.
+
+It is capped at six runs a day, one at a time, and it only appears when a
+simulator is actually feeding Grafana. There is nothing to investigate
+otherwise, and a button that fails is worse than a button that isn't there.
+
 ## The two things that make it more than a dashboard chatbot
 
 ### 1. It writes back to Grafana

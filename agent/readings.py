@@ -87,6 +87,33 @@ def _instant(c: httpx.Client, expr: str, default: float | None = None) -> float:
     return default
 
 
+#: How recently the simulator must have reported for a live crew run to have
+#: anything to investigate.
+FARM_FRESH_SECONDS = 300
+
+
+def farm_is_reporting(within_seconds: int = FARM_FRESH_SECONDS) -> bool:
+    """Is a simulator currently feeding Grafana?
+
+    The deployed container runs the war room only -- it never exports
+    telemetry, so its farm drives the shot board and nothing else. The crew
+    reads Grafana, which is fed by `sim/main.py` running elsewhere. Without
+    that, a live run starts, finds nothing, and fails in front of whoever
+    pressed the button.
+
+    One instant query, no model call, and any failure counts as "not
+    reporting": the safe answer is to withhold the button.
+    """
+    try:
+        with _client() as c:
+            fresh = _instant(
+                c, f"count(present_over_time(queue_depth[{within_seconds}s]))", 0.0
+            )
+        return fresh > 0
+    except Exception:  # noqa: BLE001 - unreachable Grafana is also "not live"
+        return False
+
+
 def read_farm(delivery_date: datetime | None = None) -> FarmReading:
     """Snapshot the farm's delivery position from live telemetry.
 

@@ -50,6 +50,15 @@ Four Gemini agents run in a fixed order over a simulated 200-node farm:
 The artefacts outlive the run. Whoever opens that dashboard next morning finds
 the investigation already written down.
 
+## You can make it run
+
+The hosted war room replays a real recorded run, which is what makes it instant
+and safe to leave on a public URL. But a replay can only *show* that agents did
+the work, so there is a **Run the crew live** button: press it and four Gemini
+agents investigate the farm right then, over MCP, streaming into the same
+console. Capped at six runs a day, one at a time, and hidden when no simulator
+is feeding Grafana — because a button that fails is worse than no button.
+
 ## How we built it
 
 `google-adk` agents on Gemini, wired to Grafana Cloud through Grafana's own

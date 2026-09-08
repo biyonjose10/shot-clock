@@ -28,6 +28,7 @@ import asyncio
 import json
 import os
 import threading
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,12 @@ DAILY_LIMIT = int(os.environ.get("SHOT_CLOCK_LIVE_RUN_LIMIT", "6"))
 #: proves nothing the first does not.
 _slot = threading.Semaphore(1)
 _lock = threading.Lock()
+
+#: The farm-liveness answer is cached: /api/status is polled by every viewer
+#: and a Prometheus round trip per poll would be silly.
+FARM_CHECK_EVERY = 60.0
+_farm_checked_at = 0.0
+_farm_was_live = False
 
 
 class Busy(RuntimeError):
@@ -81,9 +88,29 @@ def remaining() -> int:
     return max(DAILY_LIMIT - int(_load().get("used", 0)), 0)
 
 
+def farm_available() -> bool:
+    """Is there a farm to investigate? Cheap, cached briefly, no model call."""
+    global _farm_checked_at, _farm_was_live
+    now = time.monotonic()
+    if now - _farm_checked_at < FARM_CHECK_EVERY:
+        return _farm_was_live
+    try:
+        from agent.readings import farm_is_reporting
+
+        _farm_was_live = farm_is_reporting()
+    except Exception:  # noqa: BLE001 - no credentials, no live run
+        _farm_was_live = False
+    _farm_checked_at = now
+    return _farm_was_live
+
+
 def available() -> bool:
     """Could a live run start right now?"""
-    return remaining() > 0 and _slot._value > 0  # noqa: SLF001 - reading, not taking
+    return (
+        remaining() > 0
+        and _slot._value > 0  # noqa: SLF001 - reading, not taking
+        and farm_available()
+    )
 
 
 async def start(journal) -> dict[str, Any]:
@@ -122,5 +149,11 @@ def blocked_reason() -> str | None:
         return (
             f"Today's {DAILY_LIMIT} live runs are used up. The replay below is "
             f"a real recorded run, and the tech check still calls Vertex AI."
+        )
+    if not farm_available():
+        return (
+            "The render farm is not reporting to Grafana right now, so there "
+            "is nothing live to investigate. The replay below is a real "
+            "recorded run against a farm that was."
         )
     return None

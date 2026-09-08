@@ -19,3 +19,9 @@ web/static/frames/*.png
 demo/*.wav
 demo/audio/
 .tools/
+
+# Run state, not source: quota ledgers, live-call counters and stage
+# checkpoints. journals/live-*.jsonl was already covered; these were not, so a
+# stale .live_check.json was being baked into the container image.
+journals/.*.json
+journals/*.checkpoint.json

@@ -403,8 +403,53 @@ def build_board(farm: Farm) -> dict[str, Any]:
 # --- app --------------------------------------------------------------------
 
 
+def ensure_demo_frames() -> int:
+    """Render the plates the shipped journal points at.
+
+    The frames are deliberately not in the image -- `.dockerignore` excludes
+    `web/static/frames/*.png` -- and nothing was regenerating them, so on the
+    deployed site every `/static/frames/*.png` answered 404. The war room drops
+    a thumbnail that fails to load rather than showing a broken image, which
+    meant the tech check, the one beat this project exists for, rendered its
+    verdict next to nothing at all.
+
+    Rendering is deterministic and takes milliseconds, so it happens at startup
+    rather than shipping binaries. The filenames come from the journal itself
+    rather than a constant, so replacing the recording cannot silently break
+    this again.
+    """
+    rendered = 0
+    try:
+        from sim.frames import FRAMES_DIR, render_frame
+
+        path, _synthetic = _demo_journal(None)
+        for event in journal_mod.read(path):
+            if event.kind != journal_mod.VISION_VERDICT:
+                continue
+            name = Path(str(event.payload.get("image") or "")).name
+            if not name:
+                continue
+            if (FRAMES_DIR / name).exists():
+                continue
+            # "RC_0410_0112_fireflies.png" -> shot RC_0410, frame 112, fireflies
+            stem = name.rsplit(".", 1)[0].split("_")
+            if len(stem) < 3:
+                continue
+            shot_id = "_".join(stem[:2])
+            frame_no = int(stem[2])
+            defect = "_".join(stem[3:]) or None
+            render_frame(shot_id, frame_no, defect)
+            rendered += 1
+    except Exception:  # noqa: BLE001 - a missing plate must not stop the server
+        log.exception("could not pre-render the demo frames")
+    return rendered
+
+
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     CONSOLE.warm_up()
+    made = ensure_demo_frames()
+    if made:
+        log.info("rendered %d demo frame(s) the journal refers to", made)
     ticker = asyncio.create_task(CONSOLE.tick_forever())
     try:
         yield
@@ -597,11 +642,16 @@ async def demo(request: Request) -> JSONResponse:
 
 
 def _live_runs_left() -> int:
-    """Live crew runs still allowed today, or 0 if the agent stack is absent."""
+    """Live crew runs offerable right now.
+
+    Zero when the allowance is spent, when one is already running, OR when no
+    simulator is feeding Grafana -- the page hides the button on zero, and a
+    button that starts a run against an empty farm is worse than no button.
+    """
     try:
         from agent import live_run as lr
 
-        return lr.remaining()
+        return lr.remaining() if lr.available() else 0
     except Exception:  # noqa: BLE001 - a deployment without agents is fine
         return 0
 
