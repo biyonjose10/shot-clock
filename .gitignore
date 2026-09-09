@@ -29,3 +29,4 @@ journals/*.checkpoint.json
 # Working capture and the cut video: big binaries, regenerate with demo.cut
 demo/take.mp4
 demo/shot-clock.mp4
+demo/shot-clock-subtitled.mp4
