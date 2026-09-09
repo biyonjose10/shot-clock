@@ -140,8 +140,13 @@ the annotation on it.*
 
 - One continuous capture. No cuts.
 - 1920×1080, browser at 100% zoom, no bookmarks bar, no notifications.
-- Start recording **two seconds before** pressing RUN DEMO so the cold board is
-  visible.
+- **`RECORDING.md` owns the timings, not this file.** The section headings here
+  are from the first draft of the script and no longer match the take; the words
+  under them are current. RUN DEMO is pressed at **0:19**, over a cold board, not
+  two seconds in.
+- Play `demo/audio/narration-track.wav` and start the capture together. It is the
+  seven segments laid out at the shot list's offsets, built by
+  `python -m demo.build_track`.
 - The UI renders its own captions, so the picture is legible with the sound off
   — which matters, because judges watch a lot of these muted.
 - Upload as **public** or **unlisted**, not private. Private fails the check.
