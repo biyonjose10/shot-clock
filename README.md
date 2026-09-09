@@ -52,7 +52,7 @@ otherwise, and a button that fails is worse than a button that isn't there.
 
 ### 1. It writes back to Grafana
 
-> **See it without an account:** [the dashboard the crew annotated](https://robustspring2217.grafana.net/dashboard/snapshot/DUlLOLRjLOr4Iy9B3beRr2mJEMj2WtSm).
+> **See it without an account:** [the dashboard the crew annotated](https://robustspring2217.grafana.net/dashboard/snapshot/p5C6mOBjNlC67o8BAi7aiVfXB5tKLRWK).
 > Grafana Cloud has no anonymous access, so a normal dashboard link answers
 > `401` to anyone who is not on the stack — which would make the one claim
 > that matters most impossible to check. Snapshots are the public route, and
