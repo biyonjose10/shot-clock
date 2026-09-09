@@ -12,10 +12,15 @@ One continuous capture, 1920×1080. **Total 2:51**, against a 3:00 pass/fail lim
 
        .venv\Scripts\python.exe -m uvicorn web.server:app --port 8000
 
-2. **Chrome page zoom to 100%** — Ctrl+0. It is per-origin and sticky, and has
+2. **Open the board at `http://localhost:8000/?autostart=0`.** Not the bare
+   URL. The page starts the replay by itself after 900ms so that a judge who
+   lands on it sees the product without hunting for a button; `autostart=0`
+   holds it cold, which is what the take needs - the opening narration plays
+   over a still board and you press RUN DEMO on cue.
+3. **Chrome page zoom to 100%** — Ctrl+0. It is per-origin and sticky, and has
    twice been found sitting at 75%.
-3. Hide the bookmarks bar, silence notifications, full-screen the browser.
-4. Check the shot board has cards with content in them and the countdown reads
+4. Hide the bookmarks bar, silence notifications, full-screen the browser.
+5. Check the shot board has cards with content in them and the countdown reads
    about `5d`. If the board is empty or the countdown shows `+`, the server has
    been up too long — restart it.
 

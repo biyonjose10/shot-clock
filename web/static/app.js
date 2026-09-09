@@ -956,8 +956,13 @@
     /* Start without being asked. A visitor who does not find this button sees
        a shot board and leaves, having missed the entire product -- the agents,
        the tech check and the write-back are all inside the run. The button
-       stays, to watch it again. */
-    setTimeout(startDemo, 900);
+       stays, to watch it again.
+
+       `?autostart=0` holds the board cold. The take opens on a still board and
+       presses the button on cue, which autostart would otherwise pre-empt. */
+    if (new URLSearchParams(location.search).get("autostart") !== "0") {
+      setTimeout(startDemo, 900);
+    }
   }
 
   if (document.readyState === "loading") {
