@@ -25,3 +25,7 @@ demo/audio/
 # stale .live_check.json was being baked into the container image.
 journals/.*.json
 journals/*.checkpoint.json
+
+# Working capture and the cut video: big binaries, regenerate with demo.cut
+demo/take.mp4
+demo/shot-clock.mp4
