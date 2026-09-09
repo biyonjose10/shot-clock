@@ -45,10 +45,18 @@ LIVE=$(gcloud run services describe shot-clock \
   --region "$REGION" --project "$GOOGLE_CLOUD_PROJECT" \
   --format="value(spec.template.spec.containers[0].image)")
 REPO="$REGION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/cloud-run-source-deploy/shot-clock"
-echo "pruning images superseded by ${LIVE##*@}"
-gcloud artifacts docker images list "$REPO" --format="value(version)" | while read -r digest; do
-  case "$LIVE" in
-    *"$digest") continue ;;
-  esac
+LIVE_DIGEST="${LIVE##*@}"
+echo "pruning images superseded by $LIVE_DIGEST"
+
+# `tr -d` and an exact comparison, both deliberate. The locally installed CLI
+# is a Windows binary behind a shell wrapper and prints CRLF, so the digest
+# arrives with a trailing carriage return; the glob this used to use then failed
+# to match the live digest and deleted the image the running revision needs.
+# Cloud Run keeps serving from a warm instance and only fails once it scales to
+# zero, so nothing looks wrong until the service is cold and a judge is looking
+# at it. Compare the whole string, and refuse to delete the live one.
+gcloud artifacts docker images list "$REPO" --format="value(version)"   | tr -d '\r' | while read -r digest; do
+  [ -n "$digest" ] || continue
+  [ "$digest" = "$LIVE_DIGEST" ] && continue
   gcloud artifacts docker images delete "$REPO@$digest" --delete-tags --quiet || true
 done
